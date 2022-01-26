@@ -1,5 +1,54 @@
 ## Changelog
 
+### v0.18.0 (1/1/2021)
+
+#### Highlights
+
+- Update the required minimum version of mmdet and mmseg
+
+#### Improvements
+
+- Use the official markdownlint hook and add codespell hook for pre-committing (#1088)
+- Improve CI operation (#1095, #1102, #1103)
+- Use shared menu content from OpenMMLab's theme and remove duplicated contents from config (#1111)
+- Refactor the structure of documentation (#1113, #1121)
+- Update the required minimum version of mmdet and mmseg (#1147)
+
+#### Bug Fixes
+
+- Fix symlink failure on Windows (#1096)
+- Fix the upper bound of mmcv version in the mminstall requirements (#1104)
+- Fix API documentation compilation and mmcv build errors (#1116)
+- Fix figure links and pdf documentation compilation (#1132, #1135)
+
+#### Contributors
+
+A total of 4 developers contributed to this release.
+
+@ZwwWayne, @ZCMax, @Tai-Wang, @wHao-Wu
+
+### v0.17.3 (1/12/2021)
+
+#### Improvements
+
+- Change the default show value to `False` in show_result function to avoid unnecessary errors (#1034)
+- Improve the visualization of detection results with colorized points in [single_gpu_test](https://github.com/open-mmlab/mmdetection3d/blob/master/mmdet3d/apis/test.py#L11) (#1050)
+- Clean unnecessary custom_imports in entrypoints (#1068)
+
+#### Bug Fixes
+
+- Update mmcv version in the Dockerfile (#1036)
+- Fix the memory-leak problem when loading checkpoints in [init_model](https://github.com/open-mmlab/mmdetection3d/blob/master/mmdet3d/apis/inference.py#L36) (#1045)
+- Fix incorrect velocity indexing when formatting boxes on nuScenes (#1049)
+- Explicitly set cuda device ID in [init_model](https://github.com/open-mmlab/mmdetection3d/blob/master/mmdet3d/apis/inference.py#L36) to avoid memory allocation on unexpected devices (#1056)
+- Fix PointPillars FLOPs calculation error (#1076)
+
+#### Contributors
+
+A total of 5 developers contributed to this release.
+
+@wHao-Wu, @Tai-Wang, @ZCMax, @MilkClouds, @aldakata
+
 ### v0.17.2 (1/11/2021)
 
 #### Improvements
@@ -55,7 +104,7 @@ A total of 8 developers contributed to this release.
 
 #### Compatibility
 
-- Unify the camera keys for consistent transformation between coodinate systems on different datasets. The modification change the key names to `lidar2img`, `depth2img`, `cam2img`, etc. for easier understanding. Customized codes using legacy keys may be influenced.
+- Unify the camera keys for consistent transformation between coordinate systems on different datasets. The modification change the key names to `lidar2img`, `depth2img`, `cam2img`, etc. for easier understanding. Customized codes using legacy keys may be influenced.
 - The next release will begin to move files of CUDA ops to [MMCV](https://github.com/open-mmlab/mmcv). It will influence the way to import related functions. We will not break the compatibility but will raise a warning first and please prepare to migrate it.
 
 #### Highlights
@@ -509,7 +558,7 @@ In order to fix the problem that the priority of EvalHook is too low, all hook p
 #### Bug Fixes
 
 - Rename CosineAnealing to CosineAnnealing (#57)
-- Fix device inconsistant bug in 3D IoU computation (#69)
+- Fix device inconsistent bug in 3D IoU computation (#69)
 - Fix a minor bug in json2csv of lyft dataset (#78)
 - Add missed test data for pointnet modules (#85)
 - Fix `use_valid_flag` bug in `CustomDataset` (#106)

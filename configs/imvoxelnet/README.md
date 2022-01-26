@@ -5,15 +5,16 @@
 <!-- [ALGORITHM] -->
 
 We implement a monocular 3D detector ImVoxelNet and provide its results and checkpoints on KITTI dataset.
-Results for SUN RGB-D, ScanNet and nuScenes are currently available in ImVoxelNet authors 
+Results for SUN RGB-D, ScanNet and nuScenes are currently available in ImVoxelNet authors
 [repo](https://github.com/saic-vul/imvoxelnet) (based on mmdetection3d).
 
 ```
-@article{rukhovich2021imvoxelnet,
-  title={ImVoxelNet: Image to Voxels Projection for Monocular and Multi-View General-Purpose 3D Object Detection},
-  author={Danila Rukhovich, Anna Vorontsova, Anton Konushin},
-  journal={arXiv preprint arXiv:2106.01178},
-  year={2021}
+@inproceedings{rukhovich2022imvoxelnet,
+  title={Imvoxelnet: Image to voxels projection for monocular and multi-view general-purpose 3d object detection},
+  author={Rukhovich, Danila and Vorontsova, Anna and Konushin, Anton},
+  booktitle={Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision},
+  pages={2397--2406},
+  year={2022}
 }
 ```
 
