@@ -6,6 +6,7 @@ from math import sin, cos, pi
 import pandas as pd
 import os
 from tqdm import tqdm
+import argparse
 
 class Lrr30:
 
@@ -217,29 +218,39 @@ class Lrr30:
                 points = np.array(points)
                 self.spm_point_cloud[frame['recvTime']] = points
 
+def main():
+    parser = argparse.ArgumentParser(description='Read raw radar sweeps')
+    parser.add_argument('data_root', help='path to root of directory containing unprocessed data')
+    args = parser.parse_args()
 
-save_dir = "../20220118/radar_front/"
-if not os.path.exists(save_dir):
-    os.mkdir(save_dir)
-lrr = Lrr30('../20220118/raw/raw.csv', target_sensor="front")
-base_ts = 1642484600826
-num_pcs = 0
-num_pnts = 0
-for k in lrr.spm_point_cloud:
+    print(f'Using "{args.data_root}" as root path.')
 
-    current_ts = int(k * 1e3) + base_ts
-    v = lrr.spm_point_cloud[k]
+    # process input
+    save_dir = f'{args.data_root}/radar_front/'
+    if not os.path.exists(save_dir):
+        os.mkdir(save_dir)
+    lrr = Lrr30(f'{args.data_root}/input/raw/raw.csv', target_sensor="front")
+    base_ts = 1642484600826
+    num_pcs = 0
+    num_pnts = 0
+    for k in lrr.spm_point_cloud:
 
-    if np.size(v,0)>0:
-        num_pnts += len(v[:,0])
-        num_pcs +=1
-        dis = np.sqrt(v[:,0]**2+v[:,1]**2+v[:,2]**2)
-        if dis.max()<80:
-            save_path = os.path.join(save_dir, str(current_ts).zfill(13) + ".csv")
-            data = pd.DataFrame(v)
-            data.to_csv(save_path)
-            print("saving radar frame: ", str(k))
-        # else: 
-        #     raise("Not Single Distance Mode")
-avg_pnts = num_pnts/num_pcs
-print('Average points per scan is {}'.format(avg_pnts))
+        current_ts = int(k * 1e3) + base_ts
+        v = lrr.spm_point_cloud[k]
+
+        if np.size(v,0)>0:
+            num_pnts += len(v[:,0])
+            num_pcs +=1
+            dis = np.sqrt(v[:,0]**2+v[:,1]**2+v[:,2]**2)
+            if dis.max()<80:
+                save_path = os.path.join(save_dir, str(current_ts).zfill(13) + ".csv")
+                data = pd.DataFrame(v)
+                data.to_csv(save_path)
+                print("saving radar frame: ", str(k))
+            # else: 
+            #     raise("Not Single Distance Mode")
+    avg_pnts = num_pnts/num_pcs
+    print('Average points per scan is {}'.format(avg_pnts))
+
+if __name__ == '__main__':
+    main()
