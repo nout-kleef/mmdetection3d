@@ -1,6 +1,7 @@
 results
 tf_logs
 training_full
+*.rar
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
