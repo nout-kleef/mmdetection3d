@@ -10,6 +10,7 @@ from glob import glob
 from os.path import join as osp
 import pandas as pd
 from pose_extract import get_trans_from_gnssimu, get_matrix_from_ext, get_interpolate_pose
+import argparse
 
 def get_cor_radar_idx(lidar_ts, radar_ts):
     
@@ -98,33 +99,33 @@ def save_sync_gt(save_gt,gt_cor_idx,base_ts,lidar_ts,gt_files):
         full_fname = osp(save_gt, gt_fname)
         np.savetxt(full_fname, gt_obj, fmt="%s")        
 
-def main():
-    
+def pcl_sync(root_path):
     # save path of concatenated radar point clouds
-    save_path = "../20220118/sync_radar/"
+    save_path = os.path.join(root_path, "sync_radar")
     # save path of sync gt filees
-    save_gt = "../20220118/sync_gt"
+    save_gt = os.path.join(root_path, "sync_gt")
     if not os.path.exists(save_path):
         os.mkdir(save_path)
     if not os.path.exists(save_gt):
         os.mkdir(save_gt)
     # initialize the lidar and radar timestamps and files
-    radar_path = {'front': '../20220118/radar_front/', 
-                  'left': '../20220118/radar_front/',
-                  'right': '../20220118/radar_front/'
+    radar_path = os.path.join(root_path, "radar_front")
+    radar_paths = {'front': radar_path, 
+                  'left': radar_path,
+                  'right': radar_path
                   }
-    lidar_path = "../20220118/lidar/20220118-13-43-20_C/"
-    pose_path = "../20220118/gnssimu-sample-v6@2.csv"
-    gt_path = "../20220118/gt_abs/"
+    lidar_path = os.path.join(root_path, "input", "lidar", "20220118-13-43-20_C")
+    pose_path = os.path.join(root_path, "output", "online", "sample", "gnssimu-sample-v6@2.csv")
+    gt_path = os.path.join(root_path, "gt_abs")
     
     base_ts = 1642484600284 ## utc base timestamp, for lidar and robosense
     base_ts_local = 1642484600826 ## local base timestamp, for radar and pose
 
-    front_files = sorted(glob(radar_path["front"]+'*.csv'))
-    left_files = sorted(glob(radar_path["left"]+'*.csv'))
-    right_files = sorted(glob(radar_path["right"]+'*.csv'))
-    lidar_files = sorted(glob(lidar_path+'*.pcd')) 
-    gt_files = sorted(glob(gt_path+'*.csv'))
+    front_files = sorted(glob(os.path.join(radar_paths["front"], '*.csv')))
+    left_files = sorted(glob(os.path.join(radar_paths["left"], '*.csv')))
+    right_files = sorted(glob(os.path.join(radar_paths["right"], '*.csv')))
+    lidar_files = sorted(glob(os.path.join(lidar_path, '*.pcd')) )
+    gt_files = sorted(glob(os.path.join(gt_path, '*.csv')))
     
     radar_ts = {'front_ts': [], "left_ts" : [], "right_ts": []}
     lidar_ts = []
@@ -175,8 +176,12 @@ def main():
     # save sync gt to new folder, no need pose data, just to match gt and lidar
     save_sync_gt(save_gt,gt_cor_idx,base_ts,lidar_ts,gt_files)
     
-
-       
+def main():
+    parser = argparse.ArgumentParser(description='Sync radar and LiDAR pointclouds')
+    parser.add_argument('data_root', help='path to root of directory containing unprocessed data')
+    args = parser.parse_args()
+    pcl_sync(args.data_root)
     
+
 if __name__ == '__main__':
     main()

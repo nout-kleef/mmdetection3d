@@ -1,9 +1,8 @@
 import numpy as np
-from glob import glob
-import matplotlib.pyplot as plt
 import os
 from os.path import join as osp
 from tqdm import tqdm
+import argparse
 
 def get_info_idx(info_name, title):
     idx_dict = {}
@@ -17,48 +16,57 @@ def get_info_idx(info_name, title):
         idx_list += [idx[0].item()]
     return idx_dict, idx_list
 
+def extract_gt(root_path):
+    gt_file = osp(root_path, "input", "obj_gt", "GT.csv")
+    gt_data = np.loadtxt(gt_file, dtype=str, delimiter=',')
+    title = gt_data[0]
 
-root_path = "/home/toytiny/SAIC_radar/20220118/"
-gt_file = osp(root_path, "GT.csv")
-gt_data = np.loadtxt(gt_file, dtype=str, delimiter=',')
-title = gt_data[0]
+    # filter gt based on table title
+    info_list = ["stamp_sec", "type", "center.x", "center.y", "center.z", "length", "width", "height", "direction.x", "direction.y", "direction.z", "track_id"]
+    info_idx, info_idx_list = get_info_idx(info_list, title)
+    filter_gt = gt_data[:, info_idx_list]
+    gt_arr = np.array(filter_gt[1:,:]).astype(float)
 
-# filter gt based on table title
-info_list = ["stamp_sec", "type", "center.x", "center.y", "center.z", "length", "width", "height", "direction.x", "direction.y", "direction.z", "track_id"]
-info_idx, info_idx_list = get_info_idx(info_list, title)
-filter_gt = gt_data[:, info_idx_list]
-gt_arr = np.array(filter_gt[1:,:]).astype(float)
+    #bias = 18000 # 18 second compensation
 
-#bias = 18000 # 18 second compensation
+    # remove duplicate timestamp
+    ts = gt_arr[:,0]
+    ts = np.unique(ts)
 
-# remove duplicate timestamp
-ts = gt_arr[:,0]
-ts = np.unique(ts)
+    # collect gt data to each ts dict
+    gt_dict = {}
+    prev_ts = gt_arr[0,0]
+    temp_dict = {}
+    obj_cnt = 0
+    for gt in gt_arr:
+        ts = gt[0]
+        if ts != prev_ts:
+            obj_cnt = 0
+            gt_dict[ts] = temp_dict
+            temp_dict = {}
+            prev_ts = ts
+        else:
+            temp_dict[obj_cnt] = np.concatenate((np.array([obj_cnt]), gt[1:]), axis=0)
+            obj_cnt += 1
 
-# collect gt data to each ts dict
-gt_dict = {}
-prev_ts = gt_arr[0,0]
-temp_dict = {}
-obj_cnt = 0
-for gt in gt_arr:
-    ts = gt[0]
-    if ts != prev_ts:
-        obj_cnt = 0
-        gt_dict[ts] = temp_dict
-        temp_dict = {}
-        prev_ts = ts
-    else:
-        temp_dict[obj_cnt] = np.concatenate((np.array([obj_cnt]), gt[1:]), axis=0)
-        obj_cnt += 1
+    # export gt to separate file
+    gt_export_dir = osp(root_path, 'gt_abs')
+    if not os.path.exists(gt_export_dir):
+        os.mkdir(gt_export_dir)
+    for k in tqdm(gt_dict):
+        gt_obj = gt_dict[k]
+        gt_obj_arr = np.array(list(gt_obj.values()))
+        gt_ts = int(k*1e3)
+        gt_fname = str(gt_ts).zfill(13) + ".csv"
+        full_fname = osp(gt_export_dir, gt_fname)
+        np.savetxt(full_fname, gt_obj_arr, fmt="%s")
 
-# export gt to separate file
-gt_export_dir = osp(root_path, 'gt_abs')
-if not os.path.exists(gt_export_dir):
-    os.mkdir(gt_export_dir)
-for k in tqdm(gt_dict):
-    gt_obj = gt_dict[k]
-    gt_obj_arr = np.array(list(gt_obj.values()))
-    gt_ts = int(k*1e3)
-    gt_fname = str(gt_ts).zfill(13) + ".csv"
-    full_fname = osp(gt_export_dir, gt_fname)
-    np.savetxt(full_fname, gt_obj_arr, fmt="%s")
+def main():
+    parser = argparse.ArgumentParser(description='Extract ground truth data')
+    parser.add_argument('data_root', help='path to root of directory containing unprocessed data')
+    args = parser.parse_args()
+    extract_gt(args.data_root)
+    
+
+if __name__ == '__main__':
+    main()

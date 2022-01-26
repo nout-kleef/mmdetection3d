@@ -144,8 +144,6 @@ def get_interpolate_pose(path,scale):
     
     return new_poses, new_ts
     
-    
-    
 def front_radar_pose(path):
     
     ## Getting radar sensor transformation according to the reference

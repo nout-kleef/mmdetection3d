@@ -1,11 +1,9 @@
 import csv
-import open3d
 import numpy as np
 from matplotlib import pyplot as plt
 from math import sin, cos, pi
 import pandas as pd
 import os
-from tqdm import tqdm
 import argparse
 
 class Lrr30:
@@ -218,18 +216,11 @@ class Lrr30:
                 points = np.array(points)
                 self.spm_point_cloud[frame['recvTime']] = points
 
-def main():
-    parser = argparse.ArgumentParser(description='Read raw radar sweeps')
-    parser.add_argument('data_root', help='path to root of directory containing unprocessed data')
-    args = parser.parse_args()
-
-    print(f'Using "{args.data_root}" as root path.')
-
-    # process input
-    save_dir = f'{args.data_root}/radar_front/'
+def read_raw(data_root):
+    save_dir = f'{data_root}/radar_front/'
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
-    lrr = Lrr30(f'{args.data_root}/input/raw/raw.csv', target_sensor="front")
+    lrr = Lrr30(f'{data_root}/input/raw/raw.csv', target_sensor="front")
     base_ts = 1642484600826
     num_pcs = 0
     num_pnts = 0
@@ -251,6 +242,13 @@ def main():
             #     raise("Not Single Distance Mode")
     avg_pnts = num_pnts/num_pcs
     print('Average points per scan is {}'.format(avg_pnts))
+
+def main():
+    parser = argparse.ArgumentParser(description='Read raw radar sweeps')
+    parser.add_argument('data_root', help='path to root of directory containing unprocessed data')
+    args = parser.parse_args()
+    read_raw(args.data_root)
+    
 
 if __name__ == '__main__':
     main()
