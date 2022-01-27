@@ -84,7 +84,7 @@ def concat_radars(base_ts, front_files,left_files,right_files,cor_idx,cor_ts,lid
         #r_comp = radar_temp_comp(r_data, cor_ts["right_ts"][i], lidar_ts[i], ego_pose,pose_ts, sensor_T['radar_right'],sensor_T['radar_front'])
         #concat_comp = np.concatenate((f_comp,l_comp,r_comp),axis=1)
         concat_comp = f_comp
-        path = os.path.join(save_path, str(int(lidar_ts[i]*1e3)+base_ts).zfill(13) + ".csv")
+        path = os.path.join(save_path, str(round(lidar_ts[i]*1e3)+base_ts).zfill(13) + ".csv")
         data = pd.DataFrame(concat_comp.T)
         data.to_csv(path)
 
