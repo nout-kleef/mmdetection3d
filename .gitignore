@@ -1,3 +1,7 @@
+results
+tf_logs
+training_full
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -65,7 +69,8 @@ instance/
 .scrapy
 
 # Sphinx documentation
-docs/_build/
+docs/en/_build/
+docs/zh_cn/_build/
 
 # PyBuilder
 target/
