@@ -216,11 +216,11 @@ class Lrr30:
                 points = np.array(points)
                 self.spm_point_cloud[frame['recvTime']] = points
 
-def read_raw(data_root):
-    save_dir = f'{data_root}/radar_front/'
+def read_raw(load_dir, save_dir):
+    save_dir = os.path.join(save_dir, 'inhouse_format', 'radar_raw')
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
-    lrr = Lrr30(f'{data_root}/input/raw/raw.csv', target_sensor="front")
+    lrr = Lrr30(os.path.join(load_dir, 'input', 'raw', 'raw.csv'), target_sensor="front")
     base_ts = 1642484600826
     num_pcs = 0
     num_pnts = 0
