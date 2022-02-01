@@ -1,7 +1,7 @@
 import argparse
 import shutil
 import os
-import read_raw, extract_gt, pcl_sync, copy_lidar, vis_pcl
+import read_raw, extract_gt, pcl_sync, copy_lidar, partition, vis_pcl
 
 def _purge(paths):
     for path in paths:
@@ -18,6 +18,7 @@ def main():
     parser.add_argument('--skip_extract_gt', action='store_true', help='skip extract_gt.py')
     parser.add_argument('--skip_pcl_sync', action='store_true', help='skip pcl_sync.py')
     parser.add_argument('--skip_copy_lidar', action='store_true', help='skip copy_lidar.py')
+    parser.add_argument('--skip_partition', action='store_true', help='skip partition.py')
     parser.add_argument('--skip_vis_pcl', action='store_true', help='skip vis_pcl.py')
     args = parser.parse_args()
 
@@ -28,7 +29,7 @@ def main():
     _processed_paths = [
         os.path.join(args.save_dir, 'inhouse_format', 'gt'),
         os.path.join(args.save_dir, 'inhouse_format', 'radar'),
-        os.path.join(args.save_dir, 'inhouse_format', 'lidar'),
+        # os.path.join(args.save_dir, 'inhouse_format', 'lidar'),
     ]
 
     if args.delete_existing:
@@ -53,7 +54,11 @@ def main():
     if not args.skip_copy_lidar: copy_lidar.copy_lidar(args.load_dir, args.save_dir)
     else: print('(skipped)')
 
-    print('*** STEP 5 - vis_pcl.py ***')
+    print('*** STEP 5 - partition.py ***')
+    if not args.skip_partition: partition.partition(args.save_dir)
+    else: print('(skipped)')
+
+    print('*** STEP 6 - vis_pcl.py ***')
     if not args.skip_vis_pcl: vis_pcl.vis_pcl(args.load_dir, args.save_dir)
     else: print('(skipped)')
 
