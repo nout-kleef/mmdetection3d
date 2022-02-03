@@ -68,7 +68,6 @@ def get_velodyne_path(idx,
     return get_kitti_info_path(idx, prefix, 'velodyne', '.bin', training,
                                relative_path, exist_check, use_prefix_id)
 
-
 def get_calib_path(idx,
                    prefix,
                    training=True,
@@ -441,28 +440,20 @@ def get_waymo_image_info(path,
     return list(image_infos)
 
 def get_inhouse_image_info(path,
-                         training=True,
-                         label_info=True,
-                         velodyne=False,
+                         labels=False,
                          calib=False,
                          pose=False,
-                         image_ids=7481,
+                         timestamps=None,
                          extend_matrix=True,
                          num_worker=8,
-                         relative_path=True,
-                         with_imageshape=True):
+                         relative_path=True):
     """
     Inhouse annotation format version like KITTI: TODO
     {
         [optional]points: [N, 3+] point cloud
-        # [optional, for kitti]image: {
-        #     image_idx: ...
-        #     image_path: ...
-        #     image_shape: ...
-        # }
-        point_cloud: { TODO: rename and add radar
-            num_features: 6
-            velodyne_path: ...
+        lidar_pc: { TODO: add radar
+            num_features: 4
+            lidar_path: ...
         }
         [optional, for kitti]calib: {
             R0_rect: ...
@@ -479,75 +470,34 @@ def get_inhouse_image_info(path,
         }
     }
     """
-    root_path = Path(path)
-    if not isinstance(image_ids, list):
-        raise ValueError(f'image_ids must be a list. actual type: "{type(image_ids)}"')
+    def _get_path(idx, root_path, dir_name, ext, relative=True, exist_check=True):
+        path = Path(dir_name) / f'{idx}.{ext}'
+        abs_path = root_path / path
+        if not abs_path.exists():
+            print(f'WARN: "{abs_path}" does not exist')
+        return path if relative else abs_path
 
     def map_func(idx):
-        info = {}
-        pc_info = {'num_features': 6}
-        calib_info = {}
+        info = {
+            'lidar_pc': {
+                'num_features': 4,
+                'path': _get_path(idx, root_path, 'lidar', 'bin', relative=relative_path),
+            },
+            'calib': {},
+            'timestamp': idx,
+        }
+        calib_info = info['calib']
 
-        image_info = {'image_idx': idx}
-        annotations = None
-        if velodyne:
-            pc_info['velodyne_path'] = get_velodyne_path(
-                idx, path, training, relative_path, use_prefix_id=True)
-            points = np.fromfile(
-                Path(path) / pc_info['velodyne_path'], dtype=np.float32)
-            points = np.copy(points).reshape(-1, pc_info['num_features'])
-            info['timestamp'] = np.int64(points[0, -1])
-            # values of the last dim are all the timestamp
-        image_info['image_path'] = get_image_path(
-            idx,
-            path,
-            training,
-            relative_path,
-            info_type='image_0',
-            use_prefix_id=True)
-        if with_imageshape:
-            img_path = image_info['image_path']
-            if relative_path:
-                img_path = str(root_path / img_path)
-            image_info['image_shape'] = np.array(
-                io.imread(img_path).shape[:2], dtype=np.int32)
-        if label_info:
-            label_path = get_label_path(
-                idx,
-                path,
-                training,
-                relative_path,
-                info_type='label_all',
-                use_prefix_id=True)
-            if relative_path:
-                label_path = str(root_path / label_path)
-            annotations = get_label_anno(label_path)
-        info['image'] = image_info
-        info['point_cloud'] = pc_info
+        if labels:
+            label_path = _get_path(idx, root_path, 'label', 'txt', relative=False)
+            info['annos'] = get_label_anno(label_path)
+            add_difficulty_to_annos(info)
+
         if calib:
-            calib_path = get_calib_path(
-                idx, path, training, relative_path=False, use_prefix_id=True)
+            calib_path = _get_path(idx, root_path, 'calib', 'txt', relative=False)
             with open(calib_path, 'r') as f:
                 lines = f.readlines()
-            P0 = np.array([float(info) for info in lines[0].split(' ')[1:13]
-                           ]).reshape([3, 4])
-            P1 = np.array([float(info) for info in lines[1].split(' ')[1:13]
-                           ]).reshape([3, 4])
-            P2 = np.array([float(info) for info in lines[2].split(' ')[1:13]
-                           ]).reshape([3, 4])
-            P3 = np.array([float(info) for info in lines[3].split(' ')[1:13]
-                           ]).reshape([3, 4])
-            P4 = np.array([float(info) for info in lines[4].split(' ')[1:13]
-                           ]).reshape([3, 4])
-            if extend_matrix:
-                P0 = _extend_matrix(P0)
-                P1 = _extend_matrix(P1)
-                P2 = _extend_matrix(P2)
-                P3 = _extend_matrix(P3)
-                P4 = _extend_matrix(P4)
-            R0_rect = np.array([
-                float(info) for info in lines[5].split(' ')[1:10]
-            ]).reshape([3, 3])
+            R0_rect = np.array([float(info) for info in lines[0].split(' ')[1:10]]).reshape([3, 3])
             if extend_matrix:
                 rect_4x4 = np.zeros([4, 4], dtype=R0_rect.dtype)
                 rect_4x4[3, 3] = 1.
@@ -555,62 +505,19 @@ def get_inhouse_image_info(path,
             else:
                 rect_4x4 = R0_rect
 
-            Tr_velo_to_cam = np.array([
-                float(info) for info in lines[6].split(' ')[1:13]
-            ]).reshape([3, 4])
-            if extend_matrix:
-                Tr_velo_to_cam = _extend_matrix(Tr_velo_to_cam)
-            calib_info['P0'] = P0
-            calib_info['P1'] = P1
-            calib_info['P2'] = P2
-            calib_info['P3'] = P3
-            calib_info['P4'] = P4
             calib_info['R0_rect'] = rect_4x4
-            calib_info['Tr_velo_to_cam'] = Tr_velo_to_cam
-            info['calib'] = calib_info
         if pose:
-            pose_path = get_pose_path(
-                idx, path, training, relative_path=False, use_prefix_id=True)
+            pose_path = _get_path(idx, root_path, 'pose', 'txt', relative=False)
             info['pose'] = np.loadtxt(pose_path)
-
-        if annotations is not None:
-            info['annos'] = annotations
-            info['annos']['camera_id'] = info['annos'].pop('score')
-            add_difficulty_to_annos(info)
-
-        sweeps = []
-        prev_idx = idx
-        prev_idx -= 1
-        prev_info = {}
-        prev_info['velodyne_path'] = get_velodyne_path(
-            prev_idx,
-            path,
-            training,
-            relative_path,
-            exist_check=False,
-            use_prefix_id=True)
-        if_prev_exists = osp.exists(Path(path) / prev_info['velodyne_path'])
-        if if_prev_exists:
-            prev_points = np.fromfile(Path(path) / prev_info['velodyne_path'], dtype=np.float32)
-            prev_points = np.copy(prev_points).reshape(-1, pc_info['num_features'])
-            prev_info['timestamp'] = np.int64(prev_points[0, -1])
-            prev_pose_path = get_pose_path(
-                prev_idx,
-                path,
-                training,
-                relative_path=False,
-                use_prefix_id=True)
-            prev_info['pose'] = np.loadtxt(prev_pose_path)
-            sweeps.append(prev_info)
-        else:
-            missing_path = Path(path) / prev_info['velodyne_path']
-            raise FileNotFoundError(f'Missing sweep file "{missing_path}"')
-        info['sweeps'] = sweeps
-
+        
         return info
 
+    root_path = Path(path)
+    if not isinstance(timestamps, list):
+        raise ValueError(f'timestamps must be a list. actual type: "{type(timestamps)}"')
+
     with futures.ThreadPoolExecutor(num_worker) as executor:
-        image_infos = executor.map(map_func, image_ids)
+        image_infos = executor.map(map_func, timestamps)
 
     return list(image_infos)
 

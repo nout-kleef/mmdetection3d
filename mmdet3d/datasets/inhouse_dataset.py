@@ -51,7 +51,7 @@ class InhouseDataset(KittiDataset):
                  data_root,
                  ann_file,
                  split,
-                 pts_prefix='velodyne',
+                 pts_prefix='lidar',
                  pipeline=None,
                  classes=None,
                  modality=None,
@@ -78,10 +78,8 @@ class InhouseDataset(KittiDataset):
         if hasattr(self, 'flag'):
             self.flag = self.flag[::load_interval]
 
-    def _get_pts_filename(self, idx):
-        pts_filename = osp.join(self.root_split, self.pts_prefix,
-                                f'{idx:07d}.bin')
-        return pts_filename
+    def _get_pts_filename(self, ts):
+        return osp.join(self.data_root, self.pts_prefix, f'{ts}.bin')
 
     def get_data_info(self, index):
         """Get data info according to the given index.
@@ -102,23 +100,19 @@ class InhouseDataset(KittiDataset):
                 - ann_info (dict): annotation info
         """
         info = self.data_infos[index]
-        sample_idx = info['image']['image_idx']
-        img_filename = os.path.join(self.data_root,
-                                    info['image']['image_path'])
+        sample_idx = info['timestamp']
 
-        # TODO: consider use torch.Tensor only
-        rect = info['calib']['R0_rect'].astype(np.float32)
-        Trv2c = info['calib']['Tr_velo_to_cam'].astype(np.float32)
-        P0 = info['calib']['P0'].astype(np.float32)
-        lidar2img = P0 @ rect @ Trv2c
+        # TODO: add calibration
+        # rect = info['calib']['R0_rect'].astype(np.float32)
+        # Trv2c = info['calib']['Tr_velo_to_cam'].astype(np.float32)
+        # P0 = info['calib']['P0'].astype(np.float32)
+        # lidar2img = P0 @ rect @ Trv2c
 
         pts_filename = self._get_pts_filename(sample_idx)
         input_dict = dict(
             sample_idx=sample_idx,
             pts_filename=pts_filename,
-            img_prefix=None,
-            img_info=dict(filename=img_filename),
-            lidar2img=lidar2img)
+            lidar2img=None)
 
         if not self.test_mode:
             annos = self.get_ann_info(index)
