@@ -1,13 +1,14 @@
 import mmcv
 import numpy as np
 import os
+import copy
 import tempfile
 import torch
 from mmcv.utils import print_log
 from os import path as osp
 
 from mmdet.datasets import DATASETS
-from ..core.bbox import Box3DMode, points_cam2img
+from ..core.bbox import Box3DMode, points_cam2img, LiDARInstance3DBoxes
 from .kitti_dataset import KittiDataset
 
 
@@ -119,6 +120,60 @@ class InhouseDataset(KittiDataset):
             input_dict['ann_info'] = annos
 
         return input_dict
+
+    def get_ann_info(self, index):
+        """Get annotation info according to the given index.
+
+        Args:
+            index (int): Index of the annotation data to get.
+
+        Returns:
+            dict: annotation information consists of the following keys:
+
+                - gt_bboxes_3d (:obj:`LiDARInstance3DBoxes`): \
+                    3D ground truth bboxes.
+                - gt_labels_3d (np.ndarray): Labels of ground truths.
+                - gt_bboxes (np.ndarray): 2D ground truth bboxes.
+                - gt_labels (np.ndarray): Labels of ground truths.
+                - gt_names (list[str]): Class names of ground truths.
+        """
+        # Use index to get the annos, thus the evalhook could also use this api
+        info = self.data_infos[index]
+
+        annos = info['annos']
+        # we need other objects to avoid collision when sample
+        annos = self.remove_dontcare(annos)
+        loc = annos['location']
+        dims = annos['dimensions']
+        rots = annos['rotation_y']
+        gt_names = annos['name']
+        gt_bboxes_3d = np.concatenate([loc, dims, rots[..., np.newaxis]],
+                                      axis=1).astype(np.float32)
+
+        # convert gt_bboxes_3d to velodyne coordinates
+        gt_bboxes_3d = LiDARInstance3DBoxes(gt_bboxes_3d)
+        gt_bboxes = annos['bbox']
+
+        selected = self.drop_arrays_by_name(gt_names, ['DontCare'])
+        gt_bboxes = gt_bboxes[selected].astype('float32')
+        gt_names = gt_names[selected]
+
+        gt_labels = []
+        for cat in gt_names:
+            if cat in self.CLASSES:
+                gt_labels.append(self.CLASSES.index(cat))
+            else:
+                gt_labels.append(-1)
+        gt_labels = np.array(gt_labels).astype(np.int64)
+        gt_labels_3d = copy.deepcopy(gt_labels)
+
+        anns_results = dict(
+            gt_bboxes_3d=gt_bboxes_3d,
+            gt_labels_3d=gt_labels_3d,
+            bboxes=gt_bboxes,
+            labels=gt_labels,
+            gt_names=gt_names)
+        return anns_results
 
     def format_results(self,
                        outputs,
