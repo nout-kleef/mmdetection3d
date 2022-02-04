@@ -6,7 +6,7 @@ from nuscenes.utils.geometry_utils import view_points
 from pathlib import Path
 
 from mmdet3d.core.bbox import box_np_ops
-from .kitti_data_utils import get_kitti_image_info, get_waymo_image_info
+from .kitti_data_utils import get_kitti_image_info, get_waymo_image_info, get_inhouse_image_info
 from .nuscenes_converter import post_process_coords
 
 kitti_categories = ('Pedestrian', 'Cyclist', 'Car')
@@ -81,6 +81,35 @@ def _calculate_num_points_in_gt(data_path,
         num_ignored = len(annos['dimensions']) - num_obj
         num_points_in_gt = np.concatenate(
             [num_points_in_gt, -np.ones([num_ignored])])
+        annos['num_points_in_gt'] = num_points_in_gt.astype(np.int32)
+
+def _inhouse_calculate_num_points_in_gt(data_path,
+                                        infos,
+                                        relative_path,
+                                        remove_outside=True,
+                                        num_features=4):
+    for info in mmcv.track_iter_progress(infos):
+        pc_info = info['lidar_pc']
+        calib = info['calib']
+        if relative_path:
+            v_path = str(Path(data_path) / pc_info['path'])
+        else:
+            v_path = pc_info['path']
+        points_v = np.fromfile(v_path, dtype=np.float32, count=-1).reshape([-1, num_features])
+        rect = calib['R0_rect']
+
+        # points_v = points_v[points_v[:, 0] > 0]
+        annos = info['annos']
+        num_obj = len([n for n in annos['name'] if n != 'DontCare'])
+        # annos = kitti.filter_kitti_anno(annos, ['DontCare'])
+        dims = annos['dimensions'][:num_obj]  # TODO: is it safe to assume that all DontCares come last?
+        loc = annos['location'][:num_obj]
+        rots = annos['rotation_y'][:num_obj]
+        gt_boxes_lidar = np.concatenate([loc, dims, rots[..., np.newaxis]], axis=1)
+        indices = box_np_ops.points_in_rbbox(points_v[:, :3], gt_boxes_lidar)
+        num_points_in_gt = indices.sum(0)
+        num_ignored = len(annos['dimensions']) - num_obj
+        num_points_in_gt = np.concatenate([num_points_in_gt, -np.ones([num_ignored])])
         annos['num_points_in_gt'] = num_points_in_gt.astype(np.int32)
 
 
@@ -225,6 +254,81 @@ def create_waymo_info_file(data_path,
     filename = save_path / f'{pkl_prefix}_infos_test.pkl'
     print(f'Waymo info test file is saved to {filename}')
     mmcv.dump(waymo_infos_test, filename)
+
+def create_inhouse_info_file(data_path,
+                           pkl_prefix='inhouse',
+                           save_path=None,
+                           relative_path=True):
+    """Create info file of inhouse dataset.
+
+    Given the raw data, generate its related info file in pkl format.
+
+    Args:
+        data_path (str): Path of the data root.
+        pkl_prefix (str): Prefix of the info file to be generated.
+        save_path (str | None): Path to save the info file.
+        relative_path (bool): Whether to use relative path.
+        max_sweeps (int): Max sweeps before the detection frame to be used.
+    """
+    imageset_folder = Path(data_path) / 'ImageSets'
+    train_timestamps = _read_imageset_file(str(imageset_folder / 'train.txt'))
+    val_timestamps = _read_imageset_file(str(imageset_folder / 'val.txt'))
+    test_timestamps = _read_imageset_file(str(imageset_folder / 'test.txt'))
+
+    lidar_pc_dim = 4
+    calib = True
+    pose = False
+
+    print('Generate info. this may take several minutes.')
+    if save_path is None:
+        save_path = Path(data_path)
+    else:
+        save_path = Path(save_path)
+    inhouse_infos_train = get_inhouse_image_info(
+        data_path,
+        labels=True,
+        calib=calib,
+        pose=pose,
+        timestamps=train_timestamps,
+        relative_path=relative_path)
+    if calib: _inhouse_calculate_num_points_in_gt(
+        data_path,
+        inhouse_infos_train,
+        relative_path,
+        num_features=lidar_pc_dim,
+        remove_outside=False)
+    filename = save_path / f'{pkl_prefix}_infos_train.pkl'
+    print(f'Inhouse info train file is saved to {filename}')
+    mmcv.dump(inhouse_infos_train, filename)
+    inhouse_infos_val = get_inhouse_image_info(
+        data_path,
+        labels=True,
+        calib=calib,
+        pose=pose,
+        timestamps=val_timestamps,
+        relative_path=relative_path)
+    if calib: _inhouse_calculate_num_points_in_gt(
+        data_path,
+        inhouse_infos_val,
+        relative_path,
+        num_features=lidar_pc_dim,
+        remove_outside=False)
+    filename = save_path / f'{pkl_prefix}_infos_val.pkl'
+    print(f'Inhouse info val file is saved to {filename}')
+    mmcv.dump(inhouse_infos_val, filename)
+    filename = save_path / f'{pkl_prefix}_infos_trainval.pkl'
+    print(f'Inhouse info trainval file is saved to {filename}')
+    mmcv.dump(inhouse_infos_train + inhouse_infos_val, filename)
+    inhouse_infos_test = get_inhouse_image_info(
+        data_path,
+        labels=False,
+        calib=calib,
+        pose=pose,
+        timestamps=test_timestamps,
+        relative_path=relative_path)
+    filename = save_path / f'{pkl_prefix}_infos_test.pkl'
+    print(f'Inhouse info test file is saved to {filename}')
+    mmcv.dump(inhouse_infos_test, filename)
 
 
 def _create_reduced_point_cloud(data_path,

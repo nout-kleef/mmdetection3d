@@ -16,8 +16,8 @@ def get_info_idx(info_name, title):
         idx_list += [idx[0].item()]
     return idx_dict, idx_list
 
-def extract_gt(root_path):
-    gt_file = osp(root_path, "input", "obj_gt", "GT.csv")
+def extract_gt(load_dir, save_dir):
+    gt_file = osp(load_dir, "input", "obj_gt", "GT.csv")
     gt_data = np.loadtxt(gt_file, dtype=str, delimiter=',')
     title = gt_data[0]
 
@@ -50,7 +50,7 @@ def extract_gt(root_path):
             obj_cnt += 1
 
     # export gt to separate file
-    gt_export_dir = osp(root_path, 'gt_abs')
+    gt_export_dir = osp(save_dir, 'inhouse_format', 'gt_raw')
     if not os.path.exists(gt_export_dir):
         os.mkdir(gt_export_dir)
     for k in tqdm(gt_dict):

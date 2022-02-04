@@ -116,7 +116,7 @@ def get_trans_from_gnssimu(path):
     ## [Longitude Latitude Altitude Orientation Pitch Roll]
     ## convert GNSS data to ECEF coordinates
     ndata = len(pose_data[:,0])
-    yaw, pitch, roll = - pose_data[:,3], pose_data[:,4], pose_data[:,5]
+    yaw, pitch, roll = pose_data[:,3], pose_data[:,4], pose_data[:,5]
     x, y, z = blh2xyz(pose_data[:,1], pose_data[:,0], pose_data[:,2])
     ## set the initial position as the reference point
     x_r, y_r, z_r = x[0], y[0], z[0]

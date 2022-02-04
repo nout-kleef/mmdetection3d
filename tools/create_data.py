@@ -182,6 +182,46 @@ def waymo_data_prep(root_path,
         relative_path=False,
         with_mask=False)
 
+def inhouse_data_prep(root_path,
+                    info_prefix,
+                    version,
+                    out_dir,
+                    workers,
+                    max_sweeps=5):
+    """Prepare the info file for inhouse dataset.
+
+    Args:
+        root_path (str): Path of dataset root.
+        info_prefix (str): The prefix of info filenames.
+        out_dir (str): Output directory of the generated info file.
+        workers (int): Number of threads to be used.
+        max_sweeps (int): Number of input consecutive frames. Default: 5 \
+            Here we store pose information of these frames for later use.
+    """
+    from tools.data_converter import inhouse_converter as inhouse
+
+    splits = ['training', 'validation', 'testing']
+    for i, split in enumerate(splits):
+        load_dir = osp.join(root_path, 'inhouse_format')
+        save_split = 'training' if split == 'validation' else split
+        save_dir = osp.join(out_dir, 'kitti_format')
+        converter = inhouse.Inhouse2KITTI(
+            load_dir,
+            save_dir,
+            split=split,
+            workers=workers,
+            test_mode=(split == 'testing'))
+        converter.convert()
+    # Generate inhouse infos
+    out_dir = osp.join(out_dir, 'kitti_format')
+    kitti.create_inhouse_info_file(out_dir, info_prefix)
+    create_groundtruth_database(
+        'InhouseDataset',
+        out_dir,
+        info_prefix,
+        f'{out_dir}/{info_prefix}_infos_train.pkl',
+        relative_path=False,
+        with_mask=False)
 
 parser = argparse.ArgumentParser(description='Data converter arg parser')
 parser.add_argument('dataset', metavar='kitti', help='name of the dataset')
@@ -267,6 +307,13 @@ if __name__ == '__main__':
             out_dir=args.out_dir,
             workers=args.workers,
             max_sweeps=args.max_sweeps)
+    elif args.dataset == 'inhouse':
+        inhouse_data_prep(
+            root_path=args.root_path,
+            info_prefix=args.extra_tag,
+            version=args.version,
+            out_dir=args.out_dir,
+            workers=args.workers)
     elif args.dataset == 'scannet':
         scannet_data_prep(
             root_path=args.root_path,

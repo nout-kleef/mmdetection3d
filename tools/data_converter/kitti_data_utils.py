@@ -68,7 +68,6 @@ def get_velodyne_path(idx,
     return get_kitti_info_path(idx, prefix, 'velodyne', '.bin', training,
                                relative_path, exist_check, use_prefix_id)
 
-
 def get_calib_path(idx,
                    prefix,
                    training=True,
@@ -440,6 +439,87 @@ def get_waymo_image_info(path,
 
     return list(image_infos)
 
+def get_inhouse_image_info(path,
+                         labels=False,
+                         calib=False,
+                         pose=False,
+                         timestamps=None,
+                         extend_matrix=True,
+                         num_worker=8,
+                         relative_path=True):
+    """
+    Inhouse annotation format version like KITTI: TODO
+    {
+        [optional]points: [N, 3+] point cloud
+        lidar_pc: { TODO: add radar
+            num_features: 4
+            lidar_path: ...
+        }
+        [optional, for kitti]calib: {
+            R0_rect: ...
+            Tr_velo_to_cam0: ...
+            P0: ...
+        }
+        annos: {
+            location: [num_gt, 3] array
+            dimensions: [num_gt, 3] array
+            rotation_y: [num_gt] angle array
+            name: [num_gt] ground truth name array
+            [optional]difficulty: kitti difficulty
+            [optional]group_ids: used for multi-part object
+        }
+    }
+    """
+    def _get_path(idx, root_path, dir_name, ext, relative=True, exist_check=True):
+        path = Path(dir_name) / f'{idx}.{ext}'
+        abs_path = root_path / path
+        if not abs_path.exists():
+            print(f'WARN: "{abs_path}" does not exist')
+        return path if relative else abs_path
+
+    def map_func(idx):
+        info = {
+            'lidar_pc': {
+                'num_features': 4,
+                'path': _get_path(idx, root_path, 'lidar', 'bin', relative=relative_path),
+            },
+            'calib': {},
+            'timestamp': idx,
+        }
+        calib_info = info['calib']
+
+        if labels:
+            label_path = _get_path(idx, root_path, 'label', 'txt', relative=False)
+            info['annos'] = get_label_anno(label_path)
+            add_difficulty_to_annos(info)
+
+        if calib:
+            calib_path = _get_path(idx, root_path, 'calib', 'txt', relative=False)
+            with open(calib_path, 'r') as f:
+                lines = f.readlines()
+            R0_rect = np.array([float(info) for info in lines[0].split(' ')[1:10]]).reshape([3, 3])
+            if extend_matrix:
+                rect_4x4 = np.zeros([4, 4], dtype=R0_rect.dtype)
+                rect_4x4[3, 3] = 1.
+                rect_4x4[:3, :3] = R0_rect
+            else:
+                rect_4x4 = R0_rect
+
+            calib_info['R0_rect'] = rect_4x4
+        if pose:
+            pose_path = _get_path(idx, root_path, 'pose', 'txt', relative=False)
+            info['pose'] = np.loadtxt(pose_path)
+        
+        return info
+
+    root_path = Path(path)
+    if not isinstance(timestamps, list):
+        raise ValueError(f'timestamps must be a list. actual type: "{type(timestamps)}"')
+
+    with futures.ThreadPoolExecutor(num_worker) as executor:
+        image_infos = executor.map(map_func, timestamps)
+
+    return list(image_infos)
 
 def kitti_anno_to_label_file(annos, folder):
     folder = Path(folder)

@@ -207,6 +207,8 @@ def main():
             data_path = data_info['lidar_path']
         elif dataset_type in ['NuScenesMonoDataset']:
             data_path = data_info['file_name']
+        elif dataset_type in ['InhouseDataset']:
+            data_path = data_info['lidar_pc']['path']
         else:
             raise NotImplementedError(
                 f'unsupported dataset type {dataset_type}')

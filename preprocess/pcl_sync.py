@@ -84,7 +84,7 @@ def concat_radars(base_ts, front_files,left_files,right_files,cor_idx,cor_ts,lid
         #r_comp = radar_temp_comp(r_data, cor_ts["right_ts"][i], lidar_ts[i], ego_pose,pose_ts, sensor_T['radar_right'],sensor_T['radar_front'])
         #concat_comp = np.concatenate((f_comp,l_comp,r_comp),axis=1)
         concat_comp = f_comp
-        path = os.path.join(save_path, str(int(lidar_ts[i]*1e3)+base_ts).zfill(13) + ".csv")
+        path = os.path.join(save_path, str(round(lidar_ts[i]*1e3)+base_ts).zfill(13) + ".csv")
         data = pd.DataFrame(concat_comp.T)
         data.to_csv(path)
 
@@ -99,24 +99,31 @@ def save_sync_gt(save_gt,gt_cor_idx,base_ts,lidar_ts,gt_files):
         full_fname = osp(save_gt, gt_fname)
         np.savetxt(full_fname, gt_obj, fmt="%s")        
 
-def pcl_sync(root_path):
+def _get_lidar_path(load_dir):
+    lidar_path = os.path.join(load_dir, 'input', 'lidar')
+    path_options = os.listdir(lidar_path)
+    if len(path_options) != 1:
+        raise ValueError(f'"{lidar_path}" contains {path_options} files. Expecting exactly 1 subdirectory.')
+    return os.path.join(lidar_path, path_options[0])
+
+def pcl_sync(load_dir, save_dir):
     # save path of concatenated radar point clouds
-    save_path = os.path.join(root_path, "sync_radar")
-    # save path of sync gt filees
-    save_gt = os.path.join(root_path, "sync_gt")
+    save_path = os.path.join(save_dir, 'inhouse_format', "radar")
+    # save path of sync gt files
+    save_gt = os.path.join(save_dir, 'inhouse_format', "gt")
     if not os.path.exists(save_path):
         os.mkdir(save_path)
     if not os.path.exists(save_gt):
         os.mkdir(save_gt)
     # initialize the lidar and radar timestamps and files
-    radar_path = os.path.join(root_path, "radar_front")
+    radar_path = os.path.join(save_dir, 'inhouse_format', "radar_raw")
     radar_paths = {'front': radar_path, 
                   'left': radar_path,
                   'right': radar_path
                   }
-    lidar_path = os.path.join(root_path, "input", "lidar", "20220118-13-43-20_C")
-    pose_path = os.path.join(root_path, "output", "online", "sample", "gnssimu-sample-v6@2.csv")
-    gt_path = os.path.join(root_path, "gt_abs")
+    lidar_path = _get_lidar_path(load_dir)
+    pose_path = os.path.join(load_dir, "output", "online", "sample", "gnssimu-sample-v6@2.csv")
+    gt_path = os.path.join(save_dir, 'inhouse_format', "gt_raw")
     
     base_ts = 1642484600284 ## utc base timestamp, for lidar and robosense
     base_ts_local = 1642484600826 ## local base timestamp, for radar and pose
