@@ -219,7 +219,7 @@ class Lrr30:
 def read_raw(load_dir, save_dir):
     save_dir = os.path.join(save_dir, 'inhouse_format', 'radar_raw')
     if not os.path.exists(save_dir):
-        os.mkdir(save_dir)
+        os.makedirs(save_dir)
     lrr = Lrr30(os.path.join(load_dir, 'input', 'raw', 'raw.csv'), target_sensor="front")
     base_ts = 1642484600826
     num_pcs = 0

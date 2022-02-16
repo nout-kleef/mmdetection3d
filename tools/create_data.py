@@ -201,9 +201,8 @@ def inhouse_data_prep(root_path,
     from tools.data_converter import inhouse_converter as inhouse
 
     splits = ['training', 'validation', 'testing']
-    for i, split in enumerate(splits):
+    for _, split in enumerate(splits):
         load_dir = osp.join(root_path, 'inhouse_format')
-        save_split = 'training' if split == 'validation' else split
         save_dir = osp.join(out_dir, 'kitti_format')
         converter = inhouse.Inhouse2KITTI(
             load_dir,

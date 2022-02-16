@@ -8,7 +8,7 @@ from mmcv.utils import print_log
 from os import path as osp
 
 from mmdet.datasets import DATASETS
-from ..core.bbox import Box3DMode, points_cam2img, LiDARInstance3DBoxes
+from ..core.bbox import LiDARInstance3DBoxes
 from .kitti_dataset import KittiDataset
 
 
@@ -46,8 +46,6 @@ class InhouseDataset(KittiDataset):
             invalid predicted boxes. Default: [-85, -85, -5, 85, 85, 5].
     """
 
-    CLASSES = ('Car', 'Cyclist', 'Pedestrian')
-
     def __init__(self,
                  data_root,
                  ann_file,
@@ -73,6 +71,8 @@ class InhouseDataset(KittiDataset):
             filter_empty_gt=filter_empty_gt,
             test_mode=test_mode,
             pcd_limit_range=pcd_limit_range)
+
+        self.CLASSES = ('Car', 'Cyclist', 'Pedestrian', 'Truck')
 
         # to load a subset, just set the load_interval in the dataset config
         self.data_infos = self.data_infos[::load_interval]
@@ -228,8 +228,7 @@ class InhouseDataset(KittiDataset):
                                                   pklfile_prefix,
                                                   submission_prefix)
         if 'inhouse' in data_format:
-            from ..core.evaluation.waymo_utils.prediction_kitti_to_waymo import \
-                KITTI2Waymo  # noqa
+            from ..core.evaluation.inhouse_utils.prediction_kitti_to_inhouse import KITTI2Inhouse  # noqa
             inhouse_root = osp.join(
                 self.data_root.split('kitti_format')[0], 'inhouse_format')
             if self.split == 'training':
@@ -244,12 +243,12 @@ class InhouseDataset(KittiDataset):
             inhouse_results_save_dir = save_tmp_dir.name
             inhouse_results_final_path = f'{pklfile_prefix}.bin'
             if 'pts_bbox' in result_files:
-                converter = KITTI2Waymo(result_files['pts_bbox'],
+                converter = KITTI2Inhouse(result_files['pts_bbox'],
                                         inhouse_tfrecords_dir,
                                         inhouse_results_save_dir,
                                         inhouse_results_final_path, prefix)
             else:
-                converter = KITTI2Waymo(result_files, inhouse_tfrecords_dir,
+                converter = KITTI2Inhouse(result_files, inhouse_tfrecords_dir,
                                         inhouse_results_save_dir,
                                         inhouse_results_final_path, prefix)
             converter.convert()
@@ -266,12 +265,11 @@ class InhouseDataset(KittiDataset):
                  show=False,
                  out_dir=None,
                  pipeline=None):
-        """Evaluation in KITTI protocol.
+        """Evaluation in inhouse protocol. (adapted from KITTI)
 
         Args:
             results (list[dict]): Testing results of the dataset.
             metric (str | list[str]): Metrics to be evaluated.
-                Default: 'inhouse'. Another supported metric is 'kitti'.
             logger (logging.Logger | str | None): Logger used for printing
                 related information during evaluation. Default: None.
             pklfile_prefix (str | None): The prefix of pkl files. It includes
@@ -289,106 +287,36 @@ class InhouseDataset(KittiDataset):
         Returns:
             dict[str: float]: results of each evaluation metric
         """
-        assert ('inhouse' in metric or 'kitti' in metric), \
-            f'invalid metric {metric}'
-        if 'kitti' in metric:
-            result_files, tmp_dir = self.format_results(
-                results,
-                pklfile_prefix,
-                submission_prefix,
-                data_format='kitti')
-            from mmdet3d.core.evaluation import kitti_eval
-            gt_annos = [info['annos'] for info in self.data_infos]
-
-            if isinstance(result_files, dict):
-                ap_dict = dict()
-                for name, result_files_ in result_files.items():
-                    eval_types = ['bev', '3d']
-                    ap_result_str, ap_dict_ = kitti_eval(
-                        gt_annos,
-                        result_files_,
-                        self.CLASSES,
-                        eval_types=eval_types)
-                    for ap_type, ap in ap_dict_.items():
-                        ap_dict[f'{name}/{ap_type}'] = float(
-                            '{:.4f}'.format(ap))
-
-                    print_log(
-                        f'Results of {name}:\n' + ap_result_str, logger=logger)
-
-            else:
-                ap_result_str, ap_dict = kitti_eval(
-                    gt_annos,
-                    result_files,
-                    self.CLASSES,
-                    eval_types=['bev', '3d'])
-                print_log('\n' + ap_result_str, logger=logger)
+        assert 'inhouse' in metric, f'invalid metric {metric}'
         if 'inhouse' in metric:
-            inhouse_root = osp.join(
-                self.data_root.split('kitti_format')[0], 'inhouse_format')
-            if pklfile_prefix is None:
-                eval_tmp_dir = tempfile.TemporaryDirectory()
-                pklfile_prefix = osp.join(eval_tmp_dir.name, 'results')
-            else:
-                eval_tmp_dir = None
+            # inhouse metric (based on kitti metric)
             result_files, tmp_dir = self.format_results(
                 results,
                 pklfile_prefix,
                 submission_prefix,
                 data_format='inhouse')
-            import subprocess
-            ret_bytes = subprocess.check_output(
-                'mmdet3d/core/evaluation/waymo_utils/' +
-                f'compute_detection_metrics_main {pklfile_prefix}.bin ' +
-                f'{inhouse_root}/gt.bin',
-                shell=True)
-            ret_texts = ret_bytes.decode('utf-8')
-            print_log(ret_texts)
-            # parse the text to get ap_dict
-            ap_dict = {
-                'Vehicle/L1 mAP': 0,
-                'Vehicle/L1 mAPH': 0,
-                'Vehicle/L2 mAP': 0,
-                'Vehicle/L2 mAPH': 0,
-                'Pedestrian/L1 mAP': 0,
-                'Pedestrian/L1 mAPH': 0,
-                'Pedestrian/L2 mAP': 0,
-                'Pedestrian/L2 mAPH': 0,
-                'Sign/L1 mAP': 0,
-                'Sign/L1 mAPH': 0,
-                'Sign/L2 mAP': 0,
-                'Sign/L2 mAPH': 0,
-                'Cyclist/L1 mAP': 0,
-                'Cyclist/L1 mAPH': 0,
-                'Cyclist/L2 mAP': 0,
-                'Cyclist/L2 mAPH': 0,
-                'Overall/L1 mAP': 0,
-                'Overall/L1 mAPH': 0,
-                'Overall/L2 mAP': 0,
-                'Overall/L2 mAPH': 0
-            }
-            mAP_splits = ret_texts.split('mAP ')
-            mAPH_splits = ret_texts.split('mAPH ')
-            for idx, key in enumerate(ap_dict.keys()):
-                split_idx = int(idx / 2) + 1
-                if idx % 2 == 0:  # mAP
-                    ap_dict[key] = float(mAP_splits[split_idx].split(']')[0])
-                else:  # mAPH
-                    ap_dict[key] = float(mAPH_splits[split_idx].split(']')[0])
-            ap_dict['Overall/L1 mAP'] = \
-                (ap_dict['Vehicle/L1 mAP'] + ap_dict['Pedestrian/L1 mAP'] +
-                 ap_dict['Cyclist/L1 mAP']) / 3
-            ap_dict['Overall/L1 mAPH'] = \
-                (ap_dict['Vehicle/L1 mAPH'] + ap_dict['Pedestrian/L1 mAPH'] +
-                 ap_dict['Cyclist/L1 mAPH']) / 3
-            ap_dict['Overall/L2 mAP'] = \
-                (ap_dict['Vehicle/L2 mAP'] + ap_dict['Pedestrian/L2 mAP'] +
-                 ap_dict['Cyclist/L2 mAP']) / 3
-            ap_dict['Overall/L2 mAPH'] = \
-                (ap_dict['Vehicle/L2 mAPH'] + ap_dict['Pedestrian/L2 mAPH'] +
-                 ap_dict['Cyclist/L2 mAPH']) / 3
-            if eval_tmp_dir is not None:
-                eval_tmp_dir.cleanup()
+            from mmdet3d.core.evaluation import inhouse_eval
+            gt_annos = [info['annos'] for info in self.data_infos]
+            eval_types = ['bev', '3d']
+
+            if isinstance(result_files, dict):
+                ap_dict = dict()
+                for name, result_files_ in result_files.items():
+                    ap_result_str, ap_dict_ = inhouse_eval(
+                        gt_annos,
+                        result_files_,
+                        self.CLASSES,
+                        eval_types=eval_types)
+                    for ap_type, ap in ap_dict_.items():
+                        ap_dict[f'{name}/{ap_type}'] = float(f'{ap:.4f}')
+                    print_log(f'Results of {name}:\n' + ap_result_str, logger=logger)
+            else:
+                ap_result_str, ap_dict = inhouse_eval(
+                    gt_annos,
+                    result_files,
+                    self.CLASSES,
+                    eval_types=eval_types)
+                print_log('\n' + ap_result_str, logger=logger)
 
         if tmp_dir is not None:
             tmp_dir.cleanup()
@@ -421,17 +349,13 @@ class InhouseDataset(KittiDataset):
 
         det_annos = []
         print('\nConverting prediction to KITTI format')
-        for idx, pred_dicts in enumerate(
-                mmcv.track_iter_progress(net_outputs)):
+        for idx, pred_dicts in enumerate(mmcv.track_iter_progress(net_outputs)):
             annos = []
             info = self.data_infos[idx]
-            sample_idx = info['image']['image_idx']
-            image_shape = info['image']['image_shape'][:2]
+            sample_ts = info['timestamp']
 
             box_dict = self.convert_valid_bboxes(pred_dicts, info)
-            if len(box_dict['bbox']) > 0:
-                box_2d_preds = box_dict['bbox']
-                box_preds = box_dict['box3d_camera']
+            if len(box_dict['box3d_lidar']) > 0:
                 scores = box_dict['scores']
                 box_preds_lidar = box_dict['box3d_lidar']
                 label_preds = box_dict['label_preds']
@@ -441,24 +365,17 @@ class InhouseDataset(KittiDataset):
                     'truncated': [],
                     'occluded': [],
                     'alpha': [],
-                    'bbox': [],
                     'dimensions': [],
                     'location': [],
                     'rotation_y': [],
                     'score': []
                 }
 
-                for box, box_lidar, bbox, score, label in zip(
-                        box_preds, box_preds_lidar, box_2d_preds, scores,
-                        label_preds):
-                    bbox[2:] = np.minimum(bbox[2:], image_shape[::-1])
-                    bbox[:2] = np.maximum(bbox[:2], [0, 0])
+                for box, box_lidar, score, label in zip(box_preds_lidar, box_preds_lidar, scores, label_preds):
                     anno['name'].append(class_names[int(label)])
                     anno['truncated'].append(0.0)
                     anno['occluded'].append(0)
-                    anno['alpha'].append(
-                        -np.arctan2(-box_lidar[1], box_lidar[0]) + box[6])
-                    anno['bbox'].append(bbox)
+                    anno['alpha'].append(-np.arctan2(-box_lidar[1], box_lidar[0]) + box[6])
                     anno['dimensions'].append(box[3:6])
                     anno['location'].append(box[:3])
                     anno['rotation_y'].append(box[6])
@@ -468,7 +385,7 @@ class InhouseDataset(KittiDataset):
                 annos.append(anno)
 
                 if submission_prefix is not None:
-                    curr_file = f'{submission_prefix}/{sample_idx:07d}.txt'
+                    curr_file = f'{submission_prefix}/{sample_ts}.txt'
                     with open(curr_file, 'w') as f:
                         bbox = anno['bbox']
                         loc = anno['location']
@@ -476,12 +393,10 @@ class InhouseDataset(KittiDataset):
 
                         for idx in range(len(bbox)):
                             print(
-                                '{} -1 -1 {:.4f} {:.4f} {:.4f} {:.4f} '
+                                '{} -1 -1 -1 -1 -1 -1 '
                                 '{:.4f} {:.4f} {:.4f} '
                                 '{:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {:.4f}'.
                                 format(anno['name'][idx], anno['alpha'][idx],
-                                       bbox[idx][0], bbox[idx][1],
-                                       bbox[idx][2], bbox[idx][3],
                                        dims[idx][1], dims[idx][2],
                                        dims[idx][0], loc[idx][0], loc[idx][1],
                                        loc[idx][2], anno['rotation_y'][idx],
@@ -493,14 +408,12 @@ class InhouseDataset(KittiDataset):
                     'truncated': np.array([]),
                     'occluded': np.array([]),
                     'alpha': np.array([]),
-                    'bbox': np.zeros([0, 4]),
                     'dimensions': np.zeros([0, 3]),
                     'location': np.zeros([0, 3]),
                     'rotation_y': np.array([]),
                     'score': np.array([]),
                 })
-            annos[-1]['sample_idx'] = np.array(
-                [sample_idx] * len(annos[-1]['score']), dtype=np.int64)
+            annos[-1]['sample_ts'] = np.array([sample_ts] * len(annos[-1]['score']), dtype=np.int64)
 
             det_annos += annos
 
@@ -525,9 +438,6 @@ class InhouseDataset(KittiDataset):
 
         Returns:
             dict: Valid boxes after conversion.
-
-                - bbox (np.ndarray): 2D bounding boxes (in camera 0).
-                - box3d_camera (np.ndarray): 3D boxes in camera coordinates.
                 - box3d_lidar (np.ndarray): 3D boxes in lidar coordinates.
                 - scores (np.ndarray): Scores of predicted boxes.
                 - label_preds (np.ndarray): Class labels of predicted boxes.
@@ -537,32 +447,17 @@ class InhouseDataset(KittiDataset):
         box_preds = box_dict['boxes_3d']
         scores = box_dict['scores_3d']
         labels = box_dict['labels_3d']
-        sample_idx = info['image']['image_idx']
+        sample_ts = info['timestamp']
         # TODO: remove the hack of yaw
         box_preds.limit_yaw(offset=0.5, period=np.pi * 2)
 
         if len(box_preds) == 0:
             return dict(
-                bbox=np.zeros([0, 4]),
-                box3d_camera=np.zeros([0, 7]),
                 box3d_lidar=np.zeros([0, 7]),
                 scores=np.zeros([0]),
                 label_preds=np.zeros([0, 4]),
-                sample_idx=sample_idx)
+                sample_ts=sample_ts)
 
-        rect = info['calib']['R0_rect'].astype(np.float32)
-        Trv2c = info['calib']['Tr_velo_to_cam'].astype(np.float32)
-        P0 = info['calib']['P0'].astype(np.float32)
-        P0 = box_preds.tensor.new_tensor(P0)
-
-        box_preds_camera = box_preds.convert_to(Box3DMode.CAM, rect @ Trv2c)
-
-        box_corners = box_preds_camera.corners
-        box_corners_in_image = points_cam2img(box_corners, P0)
-        # box_corners_in_image: [N, 8, 2]
-        minxy = torch.min(box_corners_in_image, dim=1)[0]
-        maxxy = torch.max(box_corners_in_image, dim=1)[0]
-        box_2d_preds = torch.cat([minxy, maxxy], dim=1)
         # Post-processing
         # check box_preds
         limit_range = box_preds.tensor.new_tensor(self.pcd_limit_range)
@@ -572,19 +467,15 @@ class InhouseDataset(KittiDataset):
 
         if valid_inds.sum() > 0:
             return dict(
-                bbox=box_2d_preds[valid_inds, :].numpy(),
-                box3d_camera=box_preds_camera[valid_inds].tensor.numpy(),
                 box3d_lidar=box_preds[valid_inds].tensor.numpy(),
                 scores=scores[valid_inds].numpy(),
                 label_preds=labels[valid_inds].numpy(),
-                sample_idx=sample_idx,
+                sample_ts=sample_ts,
             )
         else:
             return dict(
-                bbox=np.zeros([0, 4]),
-                box3d_camera=np.zeros([0, 7]),
                 box3d_lidar=np.zeros([0, 7]),
                 scores=np.zeros([0]),
                 label_preds=np.zeros([0, 4]),
-                sample_idx=sample_idx,
+                sample_ts=sample_ts,
             )

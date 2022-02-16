@@ -58,6 +58,7 @@ class Inhouse2KITTI(object):
 
         self.timestamps = self._produce_timestamps()
 
+        # TODO: create if not exists
         self.label_save_dir = os.path.join(self.save_dir, 'label')
         self.calib_save_dir = os.path.join(self.save_dir, 'calib')
         self.lidar_save_dir = os.path.join(self.save_dir, 'lidar')
@@ -98,7 +99,7 @@ class Inhouse2KITTI(object):
         pcd_data = o3d.io.read_point_cloud(pcd_file)
         # # concatenate x,y,z, intensity, elongation, timestamp (6-dim) TODO: currently only x,y,z
         pc_path = os.path.join(self.lidar_save_dir, f'{ts}.bin')
-        intensity = np.zeros((len(pcd_data.points), ))  # dummy
+        intensity = np.ones((len(pcd_data.points), ))  # dummy
         point_cloud = np.column_stack((pcd_data.points, intensity))
         point_cloud.astype(np.float32).tofile(pc_path)
 
