@@ -71,7 +71,7 @@ def radar_temp_comp(data, data_ts, lidar_ts, pose, pose_ts, radar_trans, target_
     
     return data_comp
     
-def concat_radars(base_ts, front_files,left_files,right_files,cor_idx,cor_ts,lidar_ts, ego_pose,pose_ts,sensor_T,save_path):
+def concat_radars(base_ts_utc, front_files,left_files,right_files,cor_idx,cor_ts,lidar_ts, ego_pose,pose_ts,sensor_T,save_path):
     
     
     data_len = len(cor_ts["front_ts"])
@@ -84,16 +84,16 @@ def concat_radars(base_ts, front_files,left_files,right_files,cor_idx,cor_ts,lid
         #r_comp = radar_temp_comp(r_data, cor_ts["right_ts"][i], lidar_ts[i], ego_pose,pose_ts, sensor_T['radar_right'],sensor_T['radar_front'])
         #concat_comp = np.concatenate((f_comp,l_comp,r_comp),axis=1)
         concat_comp = f_comp
-        path = os.path.join(save_path, str(round(lidar_ts[i]*1e3)+base_ts).zfill(13) + ".csv")
+        path = os.path.join(save_path, str(round(lidar_ts[i]*1e3)+base_ts_utc).zfill(13) + ".csv")
         data = pd.DataFrame(concat_comp.T)
         data.to_csv(path)
 
-def save_sync_gt(save_gt,gt_cor_idx,base_ts,lidar_ts,gt_files):
+def save_sync_gt(save_gt,gt_cor_idx,base_ts_utc,lidar_ts,gt_files):
     
     data_len = len(lidar_ts)
     for i in tqdm(range(data_len)):
         ts = lidar_ts[i]
-        gt_ts = int(ts*1e3+base_ts)
+        gt_ts = int(ts*1e3+base_ts_utc)
         gt_obj = np.loadtxt(gt_files[gt_cor_idx[i]])
         gt_fname = str(gt_ts).zfill(13) + ".csv"
         full_fname = osp(save_gt, gt_fname)
@@ -106,7 +106,7 @@ def _get_lidar_path(load_dir):
         raise ValueError(f'"{lidar_path}" contains {path_options} files. Expecting exactly 1 subdirectory.')
     return os.path.join(lidar_path, path_options[0])
 
-def pcl_sync(load_dir, save_dir):
+def pcl_sync(load_dir, save_dir, base_ts: dict):
     # save path of concatenated radar point clouds
     save_path = os.path.join(save_dir, 'inhouse_format', "radar")
     # save path of sync gt files
@@ -125,8 +125,8 @@ def pcl_sync(load_dir, save_dir):
     pose_path = os.path.join(load_dir, "output", "online", "sample", "gnssimu-sample-v6@2.csv")
     gt_path = os.path.join(save_dir, 'inhouse_format', "gt_raw")
     
-    base_ts = 1642484600284 ## utc base timestamp, for lidar and robosense
-    base_ts_local = 1642484600826 ## local base timestamp, for radar and pose
+    base_ts_utc = base_ts['utc'] ## utc base timestamp, for lidar and robosense
+    base_ts_local = base_ts['local'] ## local base timestamp, for radar and pose
 
     front_files = sorted(glob(os.path.join(radar_paths["front"], '*.csv')))
     left_files = sorted(glob(os.path.join(radar_paths["left"], '*.csv')))
@@ -147,9 +147,9 @@ def pcl_sync(load_dir, save_dir):
     for file in right_files:
         radar_ts["right_ts"].append((float(file.split('/')[-1].split('.')[0])-base_ts_local)/1e3)
     for file in lidar_files:
-        lidar_ts.append((float(file.split('/')[-1].split('.')[0])-base_ts)/1e3)
+        lidar_ts.append((float(file.split('/')[-1].split('.')[0])-base_ts_utc)/1e3)
     for file in gt_files:
-        gt_ts.append((float(file.split('/')[-1].split('.')[0])-base_ts-gt_bias)/1e3)
+        gt_ts.append((float(file.split('/')[-1].split('.')[0])-base_ts_utc-gt_bias)/1e3)
     
     gt_ts = np.array(gt_ts)
         
@@ -179,9 +179,9 @@ def pcl_sync(load_dir, save_dir):
     cor_idx, cor_ts = get_cor_radar_idx(lidar_ts, radar_ts)
     
     # concat multi-radar data with temporal compensation using pose data
-    concat_radars(base_ts, front_files,left_files,right_files,cor_idx,cor_ts, lidar_ts, ego_pose,pose_ts,sensor_T,save_path)
+    concat_radars(base_ts_utc, front_files,left_files,right_files,cor_idx,cor_ts, lidar_ts, ego_pose,pose_ts,sensor_T,save_path)
     # save sync gt to new folder, no need pose data, just to match gt and lidar
-    save_sync_gt(save_gt,gt_cor_idx,base_ts,lidar_ts,gt_files)
+    save_sync_gt(save_gt,gt_cor_idx,base_ts_utc,lidar_ts,gt_files)
     
 def main():
     parser = argparse.ArgumentParser(description='Sync radar and LiDAR pointclouds')

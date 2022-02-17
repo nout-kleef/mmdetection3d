@@ -1,5 +1,6 @@
 import csv
 import numpy as np
+import mmcv
 from matplotlib import pyplot as plt
 from math import sin, cos, pi
 import pandas as pd
@@ -18,10 +19,10 @@ class Lrr30:
         plt.xlabel('frame')
         plt.ylabel('timestamp')
         plt.savefig('timestamps.png',dpi=500)
-        print('Showing Timestamps')
         
     def read_raw(self, path):
-
+        num_frames = 0
+        num_incomp_frames = 0
         with open(path) as f:
             reader = csv.reader(f)
             self.timestamps = []
@@ -30,14 +31,20 @@ class Lrr30:
                 if line.pop(0) != 'hasco-lrr30-v1':
                     continue
                 line_cp = line[:]
+                num_frames += 1
                 try:
                     frame = self.dict_frame(line)
                     self.timestamps.append(frame['recvTime'])
                 except ValueError:
-                    print('{} frame is not compatible'.format(li))
+                    # print('{} frame is not compatible'.format(li))
+                    num_incomp_frames += 1
+                    if 'frame' not in locals():
+                        continue
                     frame['left'] = line
 
                 self.data.append(frame)
+        print('Done reading raw radar data. '\
+            f'{num_incomp_frames} out of {num_frames} frames were incompatible.')
 
     @staticmethod
     def dict_frame(line):
@@ -216,15 +223,17 @@ class Lrr30:
                 points = np.array(points)
                 self.spm_point_cloud[frame['recvTime']] = points
 
-def read_raw(load_dir, save_dir):
+def read_raw(load_dir, save_dir, base_ts: dict):
     save_dir = os.path.join(save_dir, 'inhouse_format', 'radar_raw')
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     lrr = Lrr30(os.path.join(load_dir, 'input', 'raw', 'raw.csv'), target_sensor="front")
-    base_ts = 1642484600826
+    base_ts = base_ts['local']
     num_pcs = 0
     num_pnts = 0
-    for k in lrr.spm_point_cloud:
+    num_warnings = 0
+    num_saves = 0
+    for k in mmcv.track_iter_progress(lrr.spm_point_cloud):
 
         current_ts = int(k * 1e3) + base_ts
         v = lrr.spm_point_cloud[k]
@@ -235,11 +244,16 @@ def read_raw(load_dir, save_dir):
             dis = np.sqrt(v[:,0]**2+v[:,1]**2+v[:,2]**2)
             if dis.max()<80:
                 save_path = os.path.join(save_dir, str(current_ts).zfill(13) + ".csv")
+                if num_warnings < 10 and os.path.exists(save_path):
+                    print(f'WARN: {save_path} already exists')
+                    num_warnings += 1
                 data = pd.DataFrame(v)
                 data.to_csv(save_path)
-                print("saving radar frame: ", str(k))
+                # print("saving radar frame: ", str(k))
+                num_saves += 1
             # else: 
             #     raise("Not Single Distance Mode")
+    print(f'Saved {num_saves} radar frames.')
     avg_pnts = num_pnts/num_pcs
     print('Average points per scan is {}'.format(avg_pnts))
 

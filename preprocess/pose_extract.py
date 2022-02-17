@@ -108,11 +108,26 @@ def get_trans_from_gnssimu(path):
     The reference coordinate system is based on the initial point, north is x, east is y, up is z.
     
     """
+
+    def _handle_missing_vals(data):
+        """Handle missing values. Only works for rows with known value before and after itself."""
+        missing_vals = np.where(data == 'na')
+        k = len(missing_vals[0])
+        if k == 0: return
+        print(f'Interpolating {k} missing values.')
+        for i in range(k):
+            row = missing_vals[0][i]
+            col = missing_vals[1][i]
+            a = float(data[row - 1, col])
+            b = float(data[row + 1, col])
+            data[row, col] = str((a + b) / 2.0)
     
     trans = []
     tb_data = pd.read_table(path, sep=",", header=None).values
     timestamps = tb_data[3:,1].astype(np.float)
-    pose_data = np.concatenate((tb_data[:,5:8],tb_data[:,9:12]),axis=1)[3:].astype(np.float32)
+    tmp_data = np.concatenate((tb_data[3:,5:8],tb_data[3:,9:12]),axis=1)
+    _handle_missing_vals(tmp_data)
+    pose_data = tmp_data.astype(np.float32)
     ## [Longitude Latitude Altitude Orientation Pitch Roll]
     ## convert GNSS data to ECEF coordinates
     ndata = len(pose_data[:,0])
