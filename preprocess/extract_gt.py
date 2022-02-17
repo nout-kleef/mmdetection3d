@@ -17,7 +17,7 @@ def get_info_idx(info_name, title):
     return idx_dict, idx_list
 
 def extract_gt(load_dir, save_dir):
-    gt_file = osp(load_dir, "input", "obj_gt", "GT.csv")
+    gt_file = osp(load_dir, "input", "gt_object", "GT.csv")
     gt_data = np.loadtxt(gt_file, dtype=str, delimiter=',')
     title = gt_data[0]
 
