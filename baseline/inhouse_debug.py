@@ -235,7 +235,7 @@ train_dataset = dict(
     test_mode=False,
     box_type_3d='LiDAR')
 data = dict(
-    samples_per_gpu=8,
+    samples_per_gpu=11,
     workers_per_gpu=4,
     train=dict(
         type='InhouseDataset',
@@ -372,7 +372,7 @@ data = dict(
         test_mode=True,
         box_type_3d='LiDAR'))
 evaluation = dict(
-    interval=1,
+    interval=4,
     pipeline=[
         dict(
             type='LoadPointsFromFile',
@@ -399,7 +399,7 @@ momentum_config = dict(
     target_ratio=(0.8947368421052632, 1),
     cyclic_times=1,
     step_ratio_up=0.4)
-runner = dict(type='EpochBasedRunner', max_epochs=8)
+runner = dict(type='EpochBasedRunner', max_epochs=110)
 checkpoint_config = dict(interval=1)
 log_config = dict(
     interval=50,
@@ -409,6 +409,6 @@ dist_params = dict(backend='nccl')
 log_level = 'INFO'
 work_dir = 'baseline'
 load_from = None
-resume_from = None
+resume_from = 'baseline/epoch_2.pth'
 workflow = [('train', 1)]
 gpu_ids = [0]
