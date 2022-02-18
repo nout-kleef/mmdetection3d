@@ -589,22 +589,22 @@ def inhouse_eval(gt_annos,
     """
     assert len(eval_types) > 0, 'must contain at least one evaluation type'
     # ('Car', 'Cyclist', 'Pedestrian', 'Truck')
-    overlap_0_7 = np.array([
-        [-1, -1, -1, -1],        # bbox
-        [0.7, 0.5, 0.5, 0.7],    # 3d
-        [0.7, 0.5, 0.5, 0.7]     # bev
+    overlap_loose = np.array([
+        [-1, -1, -1, -1],              # bbox
+        [0.500, 0.250, 0.250, 0.500],  # 3d
+        [0.500, 0.250, 0.250, 0.500]   # bev
     ])
-    overlap_0_5 = np.array([
-        [-1, -1, -1, -1],        # bbox
-        [0.5, 0.25, 0.25, 0.5],  # 3d
-        [0.5, 0.25, 0.25, 0.5]   # bev
+    overlap_very_loose = np.array([
+        [-1, -1, -1, -1],              # bbox
+        [0.250, 0.125, 0.125, 0.250],  # 3d
+        [0.250, 0.125, 0.125, 0.250]   # bev
     ])
     """min_overlaps dimensions:
-        0: 0.7 or 0.5 IOU
+        0: loose or very loose IOU
         1: metric
         2: class
     """
-    min_overlaps = np.stack([overlap_0_7, overlap_0_5], axis=0)  # [2, 2, 4]
+    min_overlaps = np.stack([overlap_loose, overlap_very_loose], axis=0)  # [2, 2, 4]
     if not isinstance(current_classes, (list, tuple)):
         current_classes = [current_classes]
     result = ''
@@ -624,7 +624,7 @@ def inhouse_eval(gt_annos,
                 result += '3d   AP@{:.2f}: {:.4f}\n'.format(min_overlaps[i, 2, j], mAP3d[j, i])
 
             # prepare results for logger
-            postfix = 'strict' if i == 0 else 'loose'
+            postfix = 'loose' if i == 0 else 'very_loose'
             prefix = f'KITTI/{curcls_name}'
             if mAP3d is not None:
                 ret_dict[f'{prefix}_3D_{postfix}'] = mAP3d[j, i]
@@ -634,19 +634,21 @@ def inhouse_eval(gt_annos,
     # calculate mAP over all classes if there are multiple classes
     if len(current_classes) > 1:
         # prepare results for print
-        result += ('\nOverall AP (strict IoU):\n')
+        result += ('\nOverall AP:\n')
         if mAPbev is not None:
             mAPbev = mAPbev.mean(axis=0)
-            result += 'bev  AP:{:.4f}\n'.format(mAPbev[0])
+            result += 'bev  AP (     loose): {:.4f}\n'.format(mAPbev[0])
+            result += 'bev  AP (very loose): {:.4f}\n'.format(mAPbev[1])
+            # for logger
+            ret_dict[f'KITTI/Overall_BEV_loose'] = mAPbev[0]
+            ret_dict[f'KITTI/Overall_BEV_very_loose'] = mAPbev[1]
         if mAP3d is not None:
             mAP3d = mAP3d.mean(axis=0)
-            result += '3d   AP:{:.4f}\n'.format(mAP3d[0])
-
-        # prepare results for logger
-        if mAP3d is not None:
-            ret_dict[f'KITTI/Overall_3D'] = mAP3d[0]
-        if mAPbev is not None:
-            ret_dict[f'KITTI/Overall_BEV'] = mAPbev[0]
+            result += '3d   AP (     loose):{:.4f}\n'.format(mAP3d[0])
+            result += '3d   AP (very loose):{:.4f}\n'.format(mAP3d[1])
+            # for logger
+            ret_dict[f'KITTI/Overall_3D_loose'] = mAP3d[0]
+            ret_dict[f'KITTI/Overall_3D_very_loose'] = mAP3d[1]
 
     return result, ret_dict
 
