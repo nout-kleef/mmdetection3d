@@ -58,12 +58,14 @@ class Inhouse2KITTI(object):
 
         self.timestamps = self._produce_timestamps()
 
-        # TODO: create if not exists
         self.label_save_dir = os.path.join(self.save_dir, 'label')
         self.calib_save_dir = os.path.join(self.save_dir, 'calib')
         self.lidar_save_dir = os.path.join(self.save_dir, 'lidar')
         self.radar_save_dir = os.path.join(self.save_dir, 'radar')
         # self.pose_save_dir = os.path.join(self.save_dir, 'pose')
+        for dir in [self.label_save_dir, self.calib_save_dir, self.lidar_save_dir, self.radar_save_dir]:
+            if not os.path.exists(dir):
+                os.makedirs(dir)
 
         self.create_folder()
 
@@ -115,14 +117,18 @@ class Inhouse2KITTI(object):
         """
         label_load_path = os.path.join(self.gt_path, f'{ts}.csv')
         label_save_path = os.path.join(self.label_save_dir, f'{ts}.txt')
-        labels = np.genfromtxt(label_load_path, delimiter=' ',
-            dtype=[
-                ('id', 'u1'), ('class', 'u1'),
-                ('x', 'f4'), ('y', 'f4'), ('z', 'f4'),
-                ('l', 'f4'), ('w', 'f4'), ('h', 'f4'),
-                ('rx', 'f4'), ('ry', 'f4'), ('rz', 'f4'),
-                ('unknown', 'u4')
-                ])
+        try: 
+            labels = np.loadtxt(label_load_path, delimiter=' ', ndmin=1,
+                dtype=[
+                    ('id', 'u1'), ('class', 'u1'),
+                    ('x', 'f4'), ('y', 'f4'), ('z', 'f4'),
+                    ('l', 'f4'), ('w', 'f4'), ('h', 'f4'),
+                    ('rx', 'f4'), ('ry', 'f4'), ('rz', 'f4'),
+                    ('unknown', 'u4')
+                    ])
+        except ValueError:
+            print(f'Failed for timestamp {ts}. Path: {label_load_path}')
+            raise
         with open(label_save_path, 'w') as fp:
             for label in labels:
                 fp.write(f'{self.inhouse_to_kitti_class_map[label[1]]} -1 -1 -10 -1 -1 -1 -1 '\

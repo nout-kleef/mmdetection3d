@@ -94,7 +94,7 @@ def save_sync_gt(save_gt,gt_cor_idx,base_ts_utc,lidar_ts,gt_files):
     for i in tqdm(range(data_len)):
         ts = lidar_ts[i]
         gt_ts = int(ts*1e3+base_ts_utc)
-        gt_obj = np.loadtxt(gt_files[gt_cor_idx[i]])
+        gt_obj = np.loadtxt(gt_files[gt_cor_idx[i]], ndmin=2)  # ndmin=2 handles single-line input
         gt_fname = str(gt_ts).zfill(13) + ".csv"
         full_fname = osp(save_gt, gt_fname)
         np.savetxt(full_fname, gt_obj, fmt="%s")        
