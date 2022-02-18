@@ -10,9 +10,9 @@ db_sampler = dict(
     rate=1.0,
     prepare=dict(
         filter_by_difficulty=[-1],
-        filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10)),
+        filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10, Truck=5)),
     classes=class_names,
-    sample_groups=dict(Car=12, Pedestrian=6, Cyclist=6))
+    sample_groups=dict(Car=12, Pedestrian=6, Cyclist=6, Truck=6))
 
 file_client_args = dict(backend='disk')
 # Uncomment the following if use ceph or other file clients.
@@ -95,25 +95,22 @@ eval_pipeline = [
     dict(type='Collect3D', keys=['points'])
 ]
 
+train_dataset = dict(
+    type=dataset_type,
+    data_root=data_root,
+    ann_file=data_root + 'inhouse_infos_train.pkl',
+    split='training',
+    pts_prefix='lidar',
+    pipeline=train_pipeline,
+    modality=input_modality,
+    classes=class_names,
+    test_mode=False,
+    box_type_3d='LiDAR')
+
 data = dict(
     samples_per_gpu=6,
     workers_per_gpu=4,
-    train=dict(
-        type='RepeatDataset',
-        times=2,
-        dataset=dict(
-            type=dataset_type,
-            data_root=data_root,
-            ann_file=data_root + 'inhouse_infos_train.pkl',
-            split='training',
-            pts_prefix='lidar',
-            pipeline=train_pipeline,
-            modality=input_modality,
-            classes=class_names,
-            test_mode=False,
-            # we use box_type_3d='LiDAR' in inhouse and nuscenes dataset
-            # and box_type_3d='Depth' in sunrgbd and scannet dataset.
-            box_type_3d='LiDAR')),
+    train=train_dataset,
     val=dict(
         type=dataset_type,
         data_root=data_root,
