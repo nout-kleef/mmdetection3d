@@ -399,7 +399,7 @@ momentum_config = dict(
     target_ratio=(0.8947368421052632, 1),
     cyclic_times=1,
     step_ratio_up=0.4)
-runner = dict(type='EpochBasedRunner', max_epochs=110)
+runner = dict(type='EpochBasedRunner', max_epochs=160)
 checkpoint_config = dict(interval=1)
 log_config = dict(
     interval=50,
@@ -409,6 +409,6 @@ dist_params = dict(backend='nccl')
 log_level = 'INFO'
 work_dir = 'baseline'
 load_from = None
-resume_from = 'baseline/epoch_2.pth'
+resume_from = 'baseline/epoch_110.pth'
 workflow = [('train', 1)]
 gpu_ids = [0]
