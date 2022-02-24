@@ -186,8 +186,7 @@ def inhouse_data_prep(root_path,
                     info_prefix,
                     version,
                     out_dir,
-                    workers,
-                    max_sweeps=5):
+                    workers):
     """Prepare the info file for inhouse dataset.
 
     Args:
@@ -195,8 +194,6 @@ def inhouse_data_prep(root_path,
         info_prefix (str): The prefix of info filenames.
         out_dir (str): Output directory of the generated info file.
         workers (int): Number of threads to be used.
-        max_sweeps (int): Number of input consecutive frames. Default: 5 \
-            Here we store pose information of these frames for later use.
     """
     from tools.data_converter import inhouse_converter as inhouse
 

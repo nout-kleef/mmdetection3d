@@ -83,9 +83,9 @@ class Inhouse2KITTI(object):
         print('\nFinished ...')
 
     def convert_one(self, ts):
-        self.save_calib(ts)  # TODO?
+        self.save_calib(ts)
         self.save_lidar(ts)
-        # self.save_radar(ts)  # TODO
+        self.save_radar(ts)
         # self.save_pose(ts)  # TODO?
         if not self.test_mode:
             self.save_label(ts)
@@ -93,8 +93,30 @@ class Inhouse2KITTI(object):
     def __len__(self):
         return len(self.timestamps)
 
+    def save_radar(self, ts):
+        """Convert the radar data from CSV to BIN format"""
+        radar_load_path = os.path.join(self.radar_path, f'{ts}.csv')
+        radar_save_path = os.path.join(self.radar_save_dir, f'{ts}.bin')
+        try:
+            radar_data = np.loadtxt(
+                radar_load_path,
+                delimiter=',',
+                ndmin=1,
+                skiprows=1,
+                dtype=[
+                    ('id', 'u4'),
+                    ('x', 'f4'), ('y', 'f4'), ('z', 'f4'),
+                    ('vx', 'f4'), ('vy', 'f4'),
+                    ('fPower', 'f4'), ('fRCS', 'f4'), ('fSpeed', 'f4')
+                ]
+            )
+        except ValueError:
+            print(f'Failed to convert radar for timestamp {ts}. Path: {radar_load_path}')
+            raise
+        radar_data.tofile(radar_save_path)
+
     def save_lidar(self, ts):
-        """Parse and save the lidar data in psd format."""
+        """Convert the lidar data from PCD to BIN format"""
 
         # get PCD data TODO: store more dimensions, not just location
         pcd_file = os.path.join(self.lidar_path, f'{ts}.pcd')
@@ -118,16 +140,20 @@ class Inhouse2KITTI(object):
         label_load_path = os.path.join(self.gt_path, f'{ts}.csv')
         label_save_path = os.path.join(self.label_save_dir, f'{ts}.txt')
         try: 
-            labels = np.loadtxt(label_load_path, delimiter=' ', ndmin=1,
+            labels = np.loadtxt(
+                label_load_path,
+                delimiter=' ',
+                ndmin=1,
                 dtype=[
                     ('id', 'u1'), ('class', 'u1'),
                     ('x', 'f4'), ('y', 'f4'), ('z', 'f4'),
                     ('l', 'f4'), ('w', 'f4'), ('h', 'f4'),
                     ('rx', 'f4'), ('ry', 'f4'), ('rz', 'f4'),
                     ('unknown', 'u4')
-                    ])
+                ]
+            )
         except ValueError:
-            print(f'Failed for timestamp {ts}. Path: {label_load_path}')
+            print(f'Failed to convert labels for timestamp {ts}. Path: {label_load_path}')
             raise
         with open(label_save_path, 'w') as fp:
             for label in labels:
