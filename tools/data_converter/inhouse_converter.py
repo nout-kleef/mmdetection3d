@@ -23,6 +23,11 @@ class Inhouse2KITTI(object):
         test_mode (bool): Whether in the test_mode. Default: False.
     """
 
+    EXT_PARAMS = {
+        "lidar": [0, 0, -0.3, -2.5, 0, 0],
+        "radar_front": [0.06, -0.2, 0.7, -3.5, 2, 180]
+    }
+
     def __init__(self,
                  load_dir,
                  save_dir,
