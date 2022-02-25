@@ -65,7 +65,6 @@ def visualise(args, ts, lidar_transform, radar_transform):
     for box in boxes:
         vis.add_geometry(box)
     vis.run()
-    # save_view_point(vis, os.path.join(args.save_dir, 'viewpoints', f'vp_{ts}.json'))
 
 def main():
     parser = argparse.ArgumentParser(description='Visualise lidar + radar pointclouds')
@@ -87,9 +86,6 @@ def main():
     
     for ts in args.timestamps:
         visualise(args, ts, lidar_tr, radar_tr)
-        if save_img:
-            fname = os.path.join(args.save_dir, f'{ts}.png')
-            # vis.capture_screen_image(fname)
 
 def get_matrix_from_ext(ext):
     rot = R.from_euler('ZYX', ext[3:], degrees=True)
@@ -104,15 +100,6 @@ def get_rotation(yaw):
     angle = np.array([0, 0, yaw])
     r = R.from_euler('XYZ', angle)
     return r.as_matrix()
-
-def save_view_point(vis, filename):
-    param = vis.get_view_control().convert_to_pinhole_camera_parameters()
-    # open3d.io.write_pinhole_camera_parameters(filename, param)
-
-def load_view_point(vis, filename):
-    param = open3d.io.read_pinhole_camera_parameters(filename)
-    ctr = vis.get_view_control()
-    ctr.convert_from_pinhole_camera_parameters(param)
 
 if __name__ == '__main__':
     main()
