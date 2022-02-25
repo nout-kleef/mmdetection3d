@@ -1,6 +1,6 @@
 _base_ = 'pointpillars_inhouse-3class.py'
 
-runner = dict(max_epochs=160)
+runner = dict(max_epochs=180)
 evaluation = dict(interval=4)
 
 data = dict(
