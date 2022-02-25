@@ -1,11 +1,8 @@
 import mmcv
 import numpy as np
-from pathlib import Path
-from glob import glob
 import os
-from os.path import join
 import open3d as o3d
-from scipy.spatial.transform import Rotation
+from scipy.spatial.transform import Rotation as R
 
 
 class Inhouse2KITTI(object):
@@ -22,6 +19,11 @@ class Inhouse2KITTI(object):
         workers (str): Number of workers for the parallel process.
         test_mode (bool): Whether in the test_mode. Default: False.
     """
+
+    EXT_PARAMS = {
+        "lidar": [0, 0, -0.3, -2.5, 0, 0],
+        "radar_front": [0.06, -0.2, 0.7, -3.5, 2, 180]
+    }
 
     def __init__(self,
                  load_dir,
@@ -40,6 +42,9 @@ class Inhouse2KITTI(object):
             4.0: 'Truck'
         }
 
+        self.lidar_transform = self.get_matrix_from_ext([0.00,  0.0, -0.3, -2.5, 0,   0])
+        self.radar_transform = self.get_matrix_from_ext([0.06, -0.2,  0.7, -3.5, 2, 180])
+
         self.load_dir = load_dir
         self.save_dir = save_dir
         self.split = split
@@ -55,18 +60,15 @@ class Inhouse2KITTI(object):
         self.gt_path = os.path.join(self.load_dir, 'gt')
         self.radar_path = os.path.join(self.load_dir, 'radar')
         self.lidar_path = os.path.join(self.load_dir, 'lidar')
-
-        self.timestamps = self._produce_timestamps()
-
         self.label_save_dir = os.path.join(self.save_dir, 'label')
         self.calib_save_dir = os.path.join(self.save_dir, 'calib')
         self.lidar_save_dir = os.path.join(self.save_dir, 'lidar')
         self.radar_save_dir = os.path.join(self.save_dir, 'radar')
-        # self.pose_save_dir = os.path.join(self.save_dir, 'pose')
         for dir in [self.label_save_dir, self.calib_save_dir, self.lidar_save_dir, self.radar_save_dir]:
             if not os.path.exists(dir):
                 os.makedirs(dir)
 
+        self.timestamps = self._produce_timestamps()
         self.create_folder()
 
     def _produce_timestamps(self):
@@ -83,51 +85,70 @@ class Inhouse2KITTI(object):
         print('\nFinished ...')
 
     def convert_one(self, ts):
-        self.save_calib(ts)  # TODO?
+        self.save_calib(ts)
         self.save_lidar(ts)
-        # self.save_radar(ts)  # TODO
-        # self.save_pose(ts)  # TODO?
+        self.save_radar(ts)
         if not self.test_mode:
             self.save_label(ts)
 
     def __len__(self):
         return len(self.timestamps)
 
-    def save_lidar(self, ts):
-        """Parse and save the lidar data in psd format."""
+    def save_radar(self, ts):
+        """Convert the radar data from CSV to BIN format"""
+        radar_load_path = os.path.join(self.radar_path, f'{ts}.csv')
+        radar_save_path = os.path.join(self.radar_save_dir, f'{ts}.bin')
+        try:
+            radar_data = np.loadtxt(
+                radar_load_path,
+                delimiter=',',
+                ndmin=1,
+                skiprows=1,
+                dtype=[
+                    ('id', 'u4'),
+                    ('x', 'f4'), ('y', 'f4'), ('z', 'f4'),
+                    ('vx', 'f4'), ('vy', 'f4'),
+                    ('fPower', 'f4'), ('fRCS', 'f4'), ('fSpeed', 'f4')
+                ]
+            )
+        except ValueError:
+            print(f'Failed to convert radar for timestamp {ts}. Path: {radar_load_path}')
+            raise
+        radar_data.tofile(radar_save_path)
 
+    def save_lidar(self, ts):
+        """Convert the lidar data from PCD to BIN format"""
         # get PCD data TODO: store more dimensions, not just location
         pcd_file = os.path.join(self.lidar_path, f'{ts}.pcd')
         pcd_data = o3d.io.read_point_cloud(pcd_file)
-        # # concatenate x,y,z, intensity, elongation, timestamp (6-dim) TODO: currently only x,y,z
+        pcd_data.transform(self.lidar_transform)  # align lidar pointcloud with GT using extrinsic params
         pc_path = os.path.join(self.lidar_save_dir, f'{ts}.bin')
-        intensity = np.ones((len(pcd_data.points), ))  # dummy
+        intensity = np.ones((len(pcd_data.points), ))  # TODO: read actual intensity values
         point_cloud = np.column_stack((pcd_data.points, intensity))
         point_cloud.astype(np.float32).tofile(pc_path)
 
     def save_label(self, ts):
         """Parse and save the label data in txt format.
-        The relation between inhouse and kitti coordinates is noteworthy:  #TODO
+        The relation between inhouse and kitti coordinates is noteworthy:
         1. l,w,h (inhouse) --> h,w,l (kitti)
-        
-        1. x, y, z correspond to l, w, h (inhouse) -> l, h, w (kitti)
-        2. x-y-z: front-left-up (inhouse) -> right-down-front(kitti)
-        3. bbox origin at volumetric center (inhouse) -> bottom center (kitti)
-        4. rotation: +x around y-axis (kitti) -> +x around z-axis (inhouse)
         """
         label_load_path = os.path.join(self.gt_path, f'{ts}.csv')
         label_save_path = os.path.join(self.label_save_dir, f'{ts}.txt')
         try: 
-            labels = np.loadtxt(label_load_path, delimiter=' ', ndmin=1,
+            labels = np.loadtxt(
+                label_load_path,
+                delimiter=' ',
+                ndmin=1,
                 dtype=[
                     ('id', 'u1'), ('class', 'u1'),
                     ('x', 'f4'), ('y', 'f4'), ('z', 'f4'),
                     ('l', 'f4'), ('w', 'f4'), ('h', 'f4'),
                     ('rx', 'f4'), ('ry', 'f4'), ('rz', 'f4'),
                     ('unknown', 'u4')
-                    ])
+                ]
+            )
         except ValueError:
-            print(f'Failed for timestamp {ts}. Path: {label_load_path}')
+            print(f'Failed to convert labels for timestamp {ts}. Path: {label_load_path}')
             raise
         with open(label_save_path, 'w') as fp:
             for label in labels:
@@ -140,8 +161,6 @@ class Inhouse2KITTI(object):
         """Parse and save the calibration data."""
         R0_rect = [f'{i:e}' for i in np.eye(3).flatten()]
         calib_context = ''
-        # all camera ids are saved as id-1 in the result because
-        # camera 0 is unknown in the proto
         calib_context += 'R0_rect' + ': ' + ' '.join(R0_rect) + '\n'
 
         calib_save_path = os.path.join(self.calib_save_dir, f'{ts}.txt')
@@ -152,15 +171,23 @@ class Inhouse2KITTI(object):
     def create_folder(self):
         """Create folder for data preprocessing."""
         dir_list = [
-            # self.calib_save_dir,
+            self.calib_save_dir,
             self.lidar_save_dir,
             self.radar_save_dir,
-            # self.pose_save_dir,
         ]
         for d in dir_list:
             mmcv.mkdir_or_exist(d)
         if not self.test_mode:
             mmcv.mkdir_or_exist(self.label_save_dir)
+
+    def get_matrix_from_ext(self, ext):
+        rot = R.from_euler('ZYX', ext[3:], degrees=True)
+        rot_m = rot.as_matrix()
+        x, y, z = ext[:3]
+        tr = np.eye(4)
+        tr[:3,:3] = rot_m
+        tr[:3, 3] = np.array([x, y, z]).T
+        return tr
 
     def cart_to_homo(self, mat):
         """Convert transformation matrix in Cartesian coordinates to

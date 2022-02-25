@@ -48,12 +48,12 @@ def get_bbx_param(obj_info):
     obbx = o3d.geometry.OrientedBoundingBox(center.T, rot_m, extent.T)
     return obbx
 
-def vis_pcl(load_dir, save_dir):
-    lidar_files = sorted(glob(os.path.join(root_path, "input", "lidar", "20220118-13-43-20_C", "*.pcd")))
-    gt_files = sorted(glob(os.path.join(root_path, "sync_gt", "*.csv")))
-    radar_files = sorted(glob(os.path.join(root_path, "sync_radar", "*.csv")))
-    img_path = root_path + "img_vis_all/"
-    save_img = True
+def vis_pcl(load_dir):
+    lidar_files = sorted(glob(os.path.join(load_dir, "lidar", "*.pcd")))
+    gt_files = sorted(glob(os.path.join(load_dir, "gt", "*.csv")))
+    radar_files = sorted(glob(os.path.join(load_dir, "radar", "*.csv")))
+    img_path = load_dir + "img_vis_all/"
+    save_img = False
     if save_img:
         if not os.path.exists(img_path):
             os.mkdir(img_path)
