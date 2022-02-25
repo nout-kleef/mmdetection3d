@@ -12,6 +12,14 @@ RADAR_DTYPE = [
     ('vx', 'f4'), ('vy', 'f4'),
     ('fPower', 'f4'), ('fRCS', 'f4'), ('fSpeed', 'f4')
 ]
+GT_DTYPE = dtype=[
+    ('class', 'U8'),
+    ('truncated', 'i1'), ('occluded', 'i1'), ('alpha', 'i1'),
+    ('bbox0', 'i1'), ('bbox1', 'i1'), ('bbox2', 'i1'), ('bbox3', 'i1'),
+    ('h', 'f4'), ('w', 'f4'), ('l', 'f4'),
+    ('x', 'f4'), ('y', 'f4'), ('z', 'f4'),
+    ('yaw', 'f4')
+]
 LIDAR_EXT = [0, 0, -0.3, -2.5, 0, 0]
 RADAR_EXT = [0.06, -0.2, 0.7, -3.5, 2, 180]
 
@@ -28,6 +36,17 @@ def load_pointcloud(file, dtype, transform, color):
     pcd.transform(transform)
     return pcd
 
+def load_gt(file):
+    boxes = []
+    gt_data = np.loadtxt(file, dtype=GT_DTYPE, ndmin=1)
+    for gt_obj in gt_data:
+        center = np.column_stack((gt_obj['x'], gt_obj['y'], gt_obj['z']))
+        extent = np.column_stack((gt_obj['l'], gt_obj['w'], gt_obj['h']))
+        rot = get_rotation(gt_obj['yaw'])
+        box = open3d.geometry.OrientedBoundingBox(center.T, rot, extent.T)
+        boxes.append(box)
+    return boxes
+
 def visualise(args, ts, lidar_transform, radar_transform):
     vis = open3d.visualization.Visualizer()
     vis.create_window(width=1920,height=1080)
@@ -37,9 +56,14 @@ def visualise(args, ts, lidar_transform, radar_transform):
     # radar
     radar_file = os.path.join(args.load_dir, 'radar', f'{ts}.bin')
     radar_pc = load_pointcloud(radar_file, RADAR_DTYPE, radar_transform, [1, 0, 0])
+    # gt
+    gt_file = os.path.join(args.load_dir, 'label', f'{ts}.txt')
+    boxes = load_gt(gt_file)
     # display
     vis.add_geometry(lidar_pc)
     vis.add_geometry(radar_pc)
+    for box in boxes:
+        vis.add_geometry(box)
     vis.run()
     # save_view_point(vis, os.path.join(args.save_dir, 'viewpoints', f'vp_{ts}.json'))
 
@@ -75,6 +99,11 @@ def get_matrix_from_ext(ext):
     tr[:3,:3] = rot_m
     tr[:3, 3] = np.array([x, y, z]).T
     return tr
+
+def get_rotation(yaw):
+    angle = np.array([0, 0, yaw])
+    r = R.from_euler('XYZ', angle)
+    return r.as_matrix()
 
 def save_view_point(vis, filename):
     param = vis.get_view_control().convert_to_pinhole_camera_parameters()
