@@ -462,7 +462,8 @@ def eval_class(gt_annos,
         rets = _prepare_data(gt_annos, dt_annos, current_class)
         (gt_datas_list, dt_datas_list, ignored_gts, ignored_dets,
             dontcares, total_dc_num, total_num_valid_gt) = rets
-        for k, min_overlap in enumerate(min_overlaps[:, metric, m]):
+        for k, overlaps_for_strictness in enumerate(min_overlaps.values()):
+            min_overlap = overlaps_for_strictness[current_class]
             thresholdss = []
             for i in range(len(gt_annos)):
                 rets = compute_statistics_jit(
@@ -543,19 +544,11 @@ def print_str(value, *arg, sstream=None):
 def do_eval(gt_annos,
             dt_annos,
             current_classes,
-            min_overlaps,
-            eval_types=['bev', '3d']):
-    # min_overlaps: [num_minoverlap, metric, num_class]
-    mAP_bev = None
-    if 'bev' in eval_types:
-        ret = eval_class(gt_annos, dt_annos, current_classes, 1, min_overlaps)
-        mAP_bev = get_mAP(ret['precision'])
-
+            min_overlaps):
     mAP_3d = None
-    if '3d' in eval_types:
-        ret = eval_class(gt_annos, dt_annos, current_classes, 2, min_overlaps)
-        mAP_3d = get_mAP(ret['precision'])
-    return mAP_bev, mAP_3d
+    ret = eval_class(gt_annos, dt_annos, current_classes, 2, min_overlaps)
+    mAP_3d = get_mAP(ret['precision'])
+    return mAP_3d
 
 
 def do_coco_style_eval(gt_annos, dt_annos, current_classes, overlap_ranges):
@@ -574,81 +567,67 @@ def do_coco_style_eval(gt_annos, dt_annos, current_classes, overlap_ranges):
 
 def inhouse_eval(gt_annos,
                 dt_annos,
-                current_classes,
-                eval_types=['bev', '3d']):
+                current_classes):
     """KITTI evaluation.
 
     Args:
         gt_annos (list[dict]): Contain gt information of each sample.
         dt_annos (list[dict]): Contain detected information of each sample.
         current_classes (list[str]): Classes to evaluation.
-        eval_types (list[str], optional): Types to eval.
 
     Returns:
         tuple: String and dict of evaluation results.
     """
-    assert len(eval_types) > 0, 'must contain at least one evaluation type'
-    # ('Car', 'Cyclist', 'Pedestrian', 'Truck')
-    overlap_loose = np.array([
-        [-1, -1, -1, -1],              # bbox
-        [0.500, 0.250, 0.250, 0.500],  # 3d
-        [0.500, 0.250, 0.250, 0.500]   # bev
-    ])
-    overlap_very_loose = np.array([
-        [-1, -1, -1, -1],              # bbox
-        [0.250, 0.125, 0.125, 0.250],  # 3d
-        [0.250, 0.125, 0.125, 0.250]   # bev
-    ])
-    """min_overlaps dimensions:
-        0: loose or very loose IOU
-        1: metric
-        2: class
-    """
-    min_overlaps = np.stack([overlap_loose, overlap_very_loose], axis=0)  # [2, 2, 4]
+    overlaps = {
+        'strict': {
+            'car':          0.7,
+            'cyclist':      0.5,
+            'pedestrian':   0.5,
+            'truck':        0.7,
+        },
+        'loose': {
+            'car':          0.5,
+            'cyclist':      0.25,
+            'pedestrian':   0.25,
+            'truck':        0.5,
+        },
+        'very_loose': {
+            'car':          0.25,
+            'cyclist':      0.125,
+            'pedestrian':   0.125,
+            'truck':        0.25,
+        },
+    }
     if not isinstance(current_classes, (list, tuple)):
         current_classes = [current_classes]
     result = ''
 
-    mAPbev, mAP3d = do_eval(gt_annos, dt_annos, current_classes, min_overlaps, eval_types)
+    mAP3d = do_eval(gt_annos, dt_annos, current_classes, overlaps)
 
     ret_dict = {}
-    for j, curcls_name in enumerate(current_classes):
+    for m, current_class in enumerate(current_classes):
         # mAP threshold array: [num_minoverlap, metric, class]
         # mAP result: [num_class, num_minoverlap]
-        for i in range(min_overlaps.shape[0]):
+        result += f'{current_class} AP:\n'
+        for s, strictness in enumerate(overlaps.keys()):
             # prepare results for print
-            result += ('{} AP:\n'.format(curcls_name))
-            if mAPbev is not None:
-                result += 'bev  AP@{:.2f}: {:.4f}\n'.format(min_overlaps[i, 1, j], mAPbev[j, i])
             if mAP3d is not None:
-                result += '3d   AP@{:.2f}: {:.4f}\n'.format(min_overlaps[i, 2, j], mAP3d[j, i])
-
+                result += f'3d   AP@{overlaps[strictness][current_class]:.3f}: {mAP3d[m, s]:.4f}\n'
             # prepare results for logger
-            postfix = 'loose' if i == 0 else 'very_loose'
-            prefix = f'KITTI/{curcls_name}'
+            prefix = f'KITTI/{current_class}'
             if mAP3d is not None:
-                ret_dict[f'{prefix}_3D_{postfix}'] = mAP3d[j, i]
-            if mAPbev is not None:
-                ret_dict[f'{prefix}_BEV_{postfix}'] = mAPbev[j, i]
+                ret_dict[f'{prefix}_3D_{strictness}'] = mAP3d[m, s]
 
     # calculate mAP over all classes if there are multiple classes
     if len(current_classes) > 1:
         # prepare results for print
         result += ('\nOverall AP:\n')
-        if mAPbev is not None:
-            mAPbev = mAPbev.mean(axis=0)
-            result += 'bev  AP (     loose): {:.4f}\n'.format(mAPbev[0])
-            result += 'bev  AP (very loose): {:.4f}\n'.format(mAPbev[1])
-            # for logger
-            ret_dict[f'KITTI/Overall_BEV_loose'] = mAPbev[0]
-            ret_dict[f'KITTI/Overall_BEV_very_loose'] = mAPbev[1]
         if mAP3d is not None:
             mAP3d = mAP3d.mean(axis=0)
-            result += '3d   AP (     loose):{:.4f}\n'.format(mAP3d[0])
-            result += '3d   AP (very loose):{:.4f}\n'.format(mAP3d[1])
-            # for logger
-            ret_dict[f'KITTI/Overall_3D_loose'] = mAP3d[0]
-            ret_dict[f'KITTI/Overall_3D_very_loose'] = mAP3d[1]
+            for s, strictness in enumerate(overlaps.keys()):
+                result += f'3d   AP {"(" + strictness + ")": <12}:{mAP3d[s]:.4f}\n'
+                # for logger
+                ret_dict[f'KITTI/Overall_3D_{strictness}'] = mAP3d[s]
 
     return result, ret_dict
 

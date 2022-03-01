@@ -72,7 +72,7 @@ class InhouseDataset(KittiDataset):
             test_mode=test_mode,
             pcd_limit_range=pcd_limit_range)
 
-        self.CLASSES = ('Car', 'Cyclist', 'Pedestrian', 'Truck')
+        self.CLASSES = ('car', 'cyclist', 'pedestrian', 'truck')
 
         # to load a subset, just set the load_interval in the dataset config
         self.data_infos = self.data_infos[::load_interval]
@@ -288,35 +288,20 @@ class InhouseDataset(KittiDataset):
             dict[str: float]: results of each evaluation metric
         """
         assert 'inhouse' in metric, f'invalid metric {metric}'
-        if 'inhouse' in metric:
-            # inhouse metric (based on kitti metric)
-            result_files, tmp_dir = self.format_results(
-                results,
-                pklfile_prefix,
-                submission_prefix,
-                data_format='inhouse')
-            from mmdet3d.core.evaluation import inhouse_eval
-            gt_annos = [info['annos'] for info in self.data_infos]
-            eval_types = ['bev', '3d']
+        # inhouse metric (based on kitti metric)
+        result_files, tmp_dir = self.format_results(
+            results,
+            pklfile_prefix,
+            submission_prefix,
+            data_format='inhouse')
+        from mmdet3d.core.evaluation import inhouse_eval
+        gt_annos = [info['annos'] for info in self.data_infos]
 
-            if isinstance(result_files, dict):
-                ap_dict = dict()
-                for name, result_files_ in result_files.items():
-                    ap_result_str, ap_dict_ = inhouse_eval(
-                        gt_annos,
-                        result_files_,
-                        self.CLASSES,
-                        eval_types=eval_types)
-                    for ap_type, ap in ap_dict_.items():
-                        ap_dict[f'{name}/{ap_type}'] = float(f'{ap:.4f}')
-                    print_log(f'Results of {name}:\n' + ap_result_str, logger=logger)
-            else:
-                ap_result_str, ap_dict = inhouse_eval(
-                    gt_annos,
-                    result_files,
-                    self.CLASSES,
-                    eval_types=eval_types)
-                print_log('\n' + ap_result_str, logger=logger)
+        ap_result_str, ap_dict = inhouse_eval(
+            gt_annos,
+            result_files,
+            self.CLASSES)
+        print_log('\n' + ap_result_str, logger=logger)
 
         if tmp_dir is not None:
             tmp_dir.cleanup()
