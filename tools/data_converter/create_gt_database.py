@@ -223,7 +223,7 @@ def create_groundtruth_database(dataset_class_name,
             modality=dict(
                 use_lidar=True,
                 use_depth=False,
-                use_lidar_intensity=False,
+                use_lidar_intensity=False,  # TODO
                 use_camera=False,
             ),
             pipeline=[
