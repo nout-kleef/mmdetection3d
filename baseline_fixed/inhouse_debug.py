@@ -409,6 +409,6 @@ dist_params = dict(backend='nccl')
 log_level = 'INFO'
 work_dir = 'baseline_fixed'
 load_from = None
-resume_from = None
+resume_from = 'baseline_fixed/epoch_30.pth'
 workflow = [('train', 1)]
 gpu_ids = [0]
