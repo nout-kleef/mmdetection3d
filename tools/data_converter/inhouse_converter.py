@@ -20,11 +20,6 @@ class Inhouse2KITTI(object):
         test_mode (bool): Whether in the test_mode. Default: False.
     """
 
-    EXT_PARAMS = {
-        "lidar": [0, 0, -0.3, -2.5, 0, 0],
-        "radar_front": [0.06, -0.2, 0.7, -3.5, 2, 180]
-    }
-
     def __init__(self,
                  load_dir,
                  save_dir,
@@ -114,16 +109,24 @@ class Inhouse2KITTI(object):
         except ValueError:
             print(f'Failed to convert radar for timestamp {ts}. Path: {radar_load_path}')
             raise
-        radar_data.tofile(radar_save_path)
+        # transform to ground-truth coordinate system
+        radar_points_xyz = np.column_stack((radar_data['x'], radar_data['y'], radar_data['z']))
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(radar_points_xyz)
+        pcd.transform(self.radar_transform)
+        # save transformed pointcloud
+        radar_points_aux = np.column_stack((radar_data['fSpeed'], radar_data['fPower'], radar_data['fRCS']))
+        radar_data = np.column_stack((pcd.points, radar_points_aux))
+        radar_data.astype(np.float32).tofile(radar_save_path)
 
     def save_lidar(self, ts):
         """Convert the lidar data from PCD to BIN format"""
-        # get PCD data TODO: store more dimensions, not just location
         pcd_file = os.path.join(self.lidar_path, f'{ts}.pcd')
         pcd_data = o3d.io.read_point_cloud(pcd_file)
-        pcd_data.transform(self.lidar_transform)  # align lidar pointcloud with GT using extrinsic params
+        # transform to ground-truth coordinate system
+        pcd_data.transform(self.lidar_transform)
         pc_path = os.path.join(self.lidar_save_dir, f'{ts}.bin')
-        intensity = np.ones((len(pcd_data.points), ))  # TODO: read actual intensity values
+        intensity = np.ones((len(pcd_data.points), ))
         point_cloud = np.column_stack((pcd_data.points, intensity))
         point_cloud.astype(np.float32).tofile(pc_path)
 

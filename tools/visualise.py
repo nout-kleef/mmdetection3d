@@ -33,7 +33,6 @@ def load_pointcloud(file, dtype, transform, color):
     pcd = open3d.geometry.PointCloud()
     pcd.points = open3d.utility.Vector3dVector(points)
     pcd.paint_uniform_color(color)
-    # pcd.transform(transform)
     return pcd
 
 def load_gt(file):
