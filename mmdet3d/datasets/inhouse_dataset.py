@@ -8,7 +8,8 @@ from mmcv.utils import print_log
 from os import path as osp
 
 from mmdet.datasets import DATASETS
-from ..core.bbox import LiDARInstance3DBoxes
+from ..core import show_multi_modality_result, show_result
+from ..core.bbox import Box3DMode, Coord3DMode, LiDARInstance3DBoxes
 from .kitti_dataset import KittiDataset
 
 
@@ -464,3 +465,55 @@ class InhouseDataset(KittiDataset):
                 label_preds=np.zeros([0, 4]),
                 sample_ts=sample_ts,
             )
+
+    def show(self, results, out_dir, show=True, pipeline=None):
+        """Results visualization.
+
+        Args:
+            results (list[dict]): List of bounding boxes results.
+            out_dir (str): Output directory of visualization result.
+            show (bool): Visualize the results online.
+            pipeline (list[dict], optional): raw data loading for showing.
+                Default: None.
+        """
+        assert out_dir is not None, 'Expect out_dir, got none.'
+        pipeline = self._get_pipeline(pipeline)
+        for i, result in enumerate(results):
+            if 'pts_bbox' in result.keys():
+                result = result['pts_bbox']
+            data_info = self.data_infos[i]
+            pts_path = data_info['lidar_pc']['path']
+            file_name = osp.split(pts_path)[-1].split('.')[0]
+            points, img_metas, img = self._extract_data(
+                i, pipeline, ['points', 'img_metas', 'img'])
+            points = points.numpy()
+            # for now we convert points into depth mode
+            points = Coord3DMode.convert_point(points, Coord3DMode.LIDAR,
+                                               Coord3DMode.DEPTH)
+            gt_bboxes = self.get_ann_info(i)['gt_bboxes_3d'].tensor.numpy()
+            show_gt_bboxes = Box3DMode.convert(gt_bboxes, Box3DMode.LIDAR,
+                                               Box3DMode.DEPTH)
+            pred_bboxes = result['boxes_3d'].tensor.numpy()
+            show_pred_bboxes = Box3DMode.convert(pred_bboxes, Box3DMode.LIDAR,
+                                                 Box3DMode.DEPTH)
+            show_result(points, show_gt_bboxes, show_pred_bboxes, out_dir,
+                        file_name, show)
+
+            # multi-modality visualization
+            if self.modality['use_camera'] and 'lidar2img' in img_metas.keys():
+                img = img.numpy()
+                # need to transpose channel to first dim
+                img = img.transpose(1, 2, 0)
+                show_pred_bboxes = LiDARInstance3DBoxes(
+                    pred_bboxes, origin=(0.5, 0.5, 0))
+                show_gt_bboxes = LiDARInstance3DBoxes(
+                    gt_bboxes, origin=(0.5, 0.5, 0))
+                show_multi_modality_result(
+                    img,
+                    show_gt_bboxes,
+                    show_pred_bboxes,
+                    img_metas['lidar2img'],
+                    out_dir,
+                    file_name,
+                    box_mode='lidar',
+                    show=show)
