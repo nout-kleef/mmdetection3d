@@ -21,13 +21,14 @@ GT_DTYPE = dtype=[
 ]
 LIDAR_EXT = [0, 0, -0.3, -2.5, 0, 0]
 RADAR_EXT = [0.06, -0.2, 0.7, -3.5, 2, 180]
-VSCALE = 0.01
+VSCALE = 0.07
 
 def create_lines(points, vs):
     def produce_line_extension(p, v):
         """Produce _p, a point along the line through O and p, with distance v * VSCALE from p"""
+        direction = p / np.sum(p)
         dist = v * VSCALE
-        return p + p * dist
+        return p + direction * dist
 
     N = len(points)
     aux_points = np.zeros_like(points)
@@ -52,7 +53,7 @@ def load_pointcloud(file, dtype, transform, color, velocity=None):
         return pcd
     vs = points_structured[velocity]
     points_aug, connections = create_lines(points, vs)
-    lines = LineMesh(points_aug, connections, colors=color, radius=0.15)
+    lines = LineMesh(points_aug, connections, colors=color, radius=0.1)
     return lines
 
 def load_gt(file):
