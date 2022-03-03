@@ -3,6 +3,7 @@ import os
 import numpy as np
 import open3d
 from scipy.spatial.transform import Rotation as R
+from line_mesh import LineMesh
 
 
 LIDAR_DTYPE = [('x', 'f4'), ('y', 'f4'), ('z', 'f4'), ('intensity', 'f4')]
@@ -20,18 +21,39 @@ GT_DTYPE = dtype=[
 ]
 LIDAR_EXT = [0, 0, -0.3, -2.5, 0, 0]
 RADAR_EXT = [0.06, -0.2, 0.7, -3.5, 2, 180]
+VSCALE = 0.01
 
-def load_pointcloud(file, dtype, transform, color):
+def create_lines(points, vs):
+    def produce_line_extension(p, v):
+        """Produce _p, a point along the line through O and p, with distance v * VSCALE from p"""
+        dist = v * VSCALE
+        return p + p * dist
+
+    N = len(points)
+    aux_points = np.zeros_like(points)
+    for i, p in enumerate(points):
+        v = vs[i]
+        aux_points[i] = produce_line_extension(p, v)
+    points_aug = np.concatenate((points, aux_points))
+    conns = np.column_stack((np.arange(0, N), np.arange(N, N + N)))
+    return points_aug, open3d.utility.Vector2iVector(conns)
+
+def load_pointcloud(file, dtype, transform, color, velocity=None):
     points_structured = np.fromfile(file, dtype=dtype)
     points = np.column_stack((
         points_structured['x'],
         points_structured['y'],
         points_structured['z'],
     ))
-    pcd = open3d.geometry.PointCloud()
-    pcd.points = open3d.utility.Vector3dVector(points)
-    pcd.paint_uniform_color(color)
-    return pcd
+    if velocity is None:
+        pcd = open3d.geometry.PointCloud()
+        pcd.points = open3d.utility.Vector3dVector(points)
+        pcd.paint_uniform_color(color)
+        return pcd
+    vs = points_structured[velocity]
+    points_aug, connections = create_lines(points, vs)
+    lines = LineMesh(points_aug, connections, colors=color, radius=0.15)
+    return lines
 
 def load_gt(file):
     boxes = []
@@ -52,13 +74,14 @@ def visualise(args, ts, lidar_transform, radar_transform):
     lidar_pc = load_pointcloud(lidar_file, LIDAR_DTYPE, lidar_transform, [0, 0, 1])
     # radar
     radar_file = os.path.join(args.load_dir, 'radar', f'{ts}.bin')
-    radar_pc = load_pointcloud(radar_file, RADAR_DTYPE, radar_transform, [1, 0, 0])
+    radar_pc = load_pointcloud(radar_file, RADAR_DTYPE, radar_transform, [1, 0, 0], velocity='fSpeed')
     # gt
     gt_file = os.path.join(args.load_dir, 'label', f'{ts}.txt')
     boxes = load_gt(gt_file)
     # display
     vis.add_geometry(lidar_pc)
-    vis.add_geometry(radar_pc)
+    for cyl_seg in radar_pc.cylinder_segments:
+        vis.add_geometry(cyl_seg)
     for box in boxes:
         vis.add_geometry(box)
     vis.run()
