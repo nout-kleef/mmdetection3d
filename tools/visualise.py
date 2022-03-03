@@ -7,10 +7,8 @@ from scipy.spatial.transform import Rotation as R
 
 LIDAR_DTYPE = [('x', 'f4'), ('y', 'f4'), ('z', 'f4'), ('intensity', 'f4')]
 RADAR_DTYPE = [
-    ('id', 'u4'),
     ('x', 'f4'), ('y', 'f4'), ('z', 'f4'),
-    ('vx', 'f4'), ('vy', 'f4'),
-    ('fPower', 'f4'), ('fRCS', 'f4'), ('fSpeed', 'f4')
+    ('fSpeed', 'f4'), ('fPower', 'f4'), ('fRCS', 'f4')
 ]
 GT_DTYPE = dtype=[
     ('class', 'U8'),
