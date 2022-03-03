@@ -30,11 +30,13 @@ def inside_range(l, classname, diff) -> bool:
         [[0, 25.0], [-18, 18], [-2.0, 0.5]],
         [[0, 45.0], [-27, 27], [-2.5, 0.5]],
         [[0, 70.4], [-40, 40], [-3, 1]],
+        [[-1e6, 1e6], [-1e6, 1e6], [-1e6, 1e6]],
     ])
     ped_range = np.array([
         [[0, 20], [-9.0, 9.0], [-2.0, 0.5]],
         [[0, 32], [-13.5, 13.5], [-2.5, 0.5]],
         [[0, 48], [-20.0, 20.0], [-2.5, 0.5]],
+        [[-1e6, 1e6], [-1e6, 1e6], [-1e6, 1e6]],
     ])
     if classname == 'car' or classname == 'truck': lims = car_range[diff]
     elif classname == 'pedestrian' or classname == 'cyclist': lims = ped_range[diff]
@@ -557,7 +559,7 @@ def print_str(value, *arg, sstream=None):
 
 
 def do_eval(gt_annos, dt_annos, current_classes, min_overlaps):
-    difficulties = [0, 1, 2]
+    difficulties = [0, 1, 2, 3]
     ret = eval_class(gt_annos, dt_annos, current_classes, difficulties, 2, min_overlaps)
     return get_mAP(ret['precision'])
 
@@ -616,8 +618,8 @@ def inhouse_eval(gt_annos,
     mAP3d = do_eval(gt_annos, dt_annos, current_classes, overlaps)
 
     ret_dict = {}
-    difficulties = ['close', 'medium', 'far']
-    result += f'                      {difficulties[0]:<6}\t {difficulties[1]:<6}\t {difficulties[2]:<6}\n'
+    difficulties = ['close', 'medium', 'far', 'no_filter']
+    result += f'                      {difficulties[0]:<6}\t {difficulties[1]:<6}\t {difficulties[2]:<6}\t {difficulties[3]:<6}\n'
     for m, current_class in enumerate(current_classes):
         # mAP threshold array: [num_minoverlap, metric, class]
         # mAP result: [num_class, num_minoverlap]
@@ -625,7 +627,7 @@ def inhouse_eval(gt_annos,
         for s, strictness in enumerate(overlaps.keys()):
             # prepare results for print
             if mAP3d is not None:
-                result += '3d   AP@{:.3f}       : {:.4f}\t {:.4f}\t {:.4f}\n'.format(overlaps[strictness][current_class], *mAP3d[m, :, s])
+                result += '3d   AP@{:.3f}       : {:.3f}\t {:.3f}\t {:.3f}\t {:.3f}\n'.format(overlaps[strictness][current_class], *mAP3d[m, :, s])
             # prepare results for logger
             for idx, diff in enumerate(difficulties):
                 ret_dict[f'KITTI/{current_class}_3D_{diff}_{strictness}'] = mAP3d[m, idx, s]
@@ -637,7 +639,7 @@ def inhouse_eval(gt_annos,
         if mAP3d is not None:
             mAP3d = mAP3d.mean(axis=0)
             for s, strictness in enumerate(overlaps.keys()):
-                result += '3d   AP {: <12}: {:.4f}\t {:.4f}\t {:.4f}\n'.format("(" + strictness + ")", *mAP3d[:, s])
+                result += '3d   AP {: <12}: {:.3f}\t {:.3f}\t {:.3f}\t {:.3f}\n'.format("(" + strictness + ")", *mAP3d[:, s])
                 # for logger
                 for idx, diff in enumerate(difficulties):
                     ret_dict[f'KITTI/overall_3D_{diff}_{strictness}'] = mAP3d[idx, s]
