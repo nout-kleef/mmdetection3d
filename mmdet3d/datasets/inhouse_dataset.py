@@ -8,7 +8,8 @@ from mmcv.utils import print_log
 from os import path as osp
 
 from mmdet.datasets import DATASETS
-from ..core.bbox import LiDARInstance3DBoxes
+from ..core import show_multi_modality_result, show_result
+from ..core.bbox import Box3DMode, Coord3DMode, LiDARInstance3DBoxes
 from .kitti_dataset import KittiDataset
 
 
@@ -72,7 +73,7 @@ class InhouseDataset(KittiDataset):
             test_mode=test_mode,
             pcd_limit_range=pcd_limit_range)
 
-        self.CLASSES = ('Car', 'Cyclist', 'Pedestrian', 'Truck')
+        self.CLASSES = ('car', 'cyclist', 'pedestrian', 'truck')
 
         # to load a subset, just set the load_interval in the dataset config
         self.data_infos = self.data_infos[::load_interval]
@@ -288,35 +289,20 @@ class InhouseDataset(KittiDataset):
             dict[str: float]: results of each evaluation metric
         """
         assert 'inhouse' in metric, f'invalid metric {metric}'
-        if 'inhouse' in metric:
-            # inhouse metric (based on kitti metric)
-            result_files, tmp_dir = self.format_results(
-                results,
-                pklfile_prefix,
-                submission_prefix,
-                data_format='inhouse')
-            from mmdet3d.core.evaluation import inhouse_eval
-            gt_annos = [info['annos'] for info in self.data_infos]
-            eval_types = ['bev', '3d']
+        # inhouse metric (based on kitti metric)
+        result_files, tmp_dir = self.format_results(
+            results,
+            pklfile_prefix,
+            submission_prefix,
+            data_format='inhouse')
+        from mmdet3d.core.evaluation import inhouse_eval
+        gt_annos = [info['annos'] for info in self.data_infos]
 
-            if isinstance(result_files, dict):
-                ap_dict = dict()
-                for name, result_files_ in result_files.items():
-                    ap_result_str, ap_dict_ = inhouse_eval(
-                        gt_annos,
-                        result_files_,
-                        self.CLASSES,
-                        eval_types=eval_types)
-                    for ap_type, ap in ap_dict_.items():
-                        ap_dict[f'{name}/{ap_type}'] = float(f'{ap:.4f}')
-                    print_log(f'Results of {name}:\n' + ap_result_str, logger=logger)
-            else:
-                ap_result_str, ap_dict = inhouse_eval(
-                    gt_annos,
-                    result_files,
-                    self.CLASSES,
-                    eval_types=eval_types)
-                print_log('\n' + ap_result_str, logger=logger)
+        ap_result_str, ap_dict = inhouse_eval(
+            gt_annos,
+            result_files,
+            self.CLASSES)
+        print_log('\n' + ap_result_str, logger=logger)
 
         if tmp_dir is not None:
             tmp_dir.cleanup()
@@ -479,3 +465,55 @@ class InhouseDataset(KittiDataset):
                 label_preds=np.zeros([0, 4]),
                 sample_ts=sample_ts,
             )
+
+    def show(self, results, out_dir, show=True, pipeline=None):
+        """Results visualization.
+
+        Args:
+            results (list[dict]): List of bounding boxes results.
+            out_dir (str): Output directory of visualization result.
+            show (bool): Visualize the results online.
+            pipeline (list[dict], optional): raw data loading for showing.
+                Default: None.
+        """
+        assert out_dir is not None, 'Expect out_dir, got none.'
+        pipeline = self._get_pipeline(pipeline)
+        for i, result in enumerate(results):
+            if 'pts_bbox' in result.keys():
+                result = result['pts_bbox']
+            data_info = self.data_infos[i]
+            pts_path = data_info['lidar_pc']['path']
+            file_name = osp.split(pts_path)[-1].split('.')[0]
+            points, img_metas, img = self._extract_data(
+                i, pipeline, ['points', 'img_metas', 'img'])
+            points = points.numpy()
+            # for now we convert points into depth mode
+            points = Coord3DMode.convert_point(points, Coord3DMode.LIDAR,
+                                               Coord3DMode.DEPTH)
+            gt_bboxes = self.get_ann_info(i)['gt_bboxes_3d'].tensor.numpy()
+            show_gt_bboxes = Box3DMode.convert(gt_bboxes, Box3DMode.LIDAR,
+                                               Box3DMode.DEPTH)
+            pred_bboxes = result['boxes_3d'].tensor.numpy()
+            show_pred_bboxes = Box3DMode.convert(pred_bboxes, Box3DMode.LIDAR,
+                                                 Box3DMode.DEPTH)
+            show_result(points, show_gt_bboxes, show_pred_bboxes, out_dir,
+                        file_name, show)
+
+            # multi-modality visualization
+            if self.modality['use_camera'] and 'lidar2img' in img_metas.keys():
+                img = img.numpy()
+                # need to transpose channel to first dim
+                img = img.transpose(1, 2, 0)
+                show_pred_bboxes = LiDARInstance3DBoxes(
+                    pred_bboxes, origin=(0.5, 0.5, 0))
+                show_gt_bboxes = LiDARInstance3DBoxes(
+                    gt_bboxes, origin=(0.5, 0.5, 0))
+                show_multi_modality_result(
+                    img,
+                    show_gt_bboxes,
+                    show_pred_bboxes,
+                    img_metas['lidar2img'],
+                    out_dir,
+                    file_name,
+                    box_mode='lidar',
+                    show=show)
