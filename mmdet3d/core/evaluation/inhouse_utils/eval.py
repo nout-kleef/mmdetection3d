@@ -70,7 +70,7 @@ def clean_data(gt_anno, dt_anno, current_class, difficulty):
     for i in range(num_dt):
         if dt_anno['name'][i].lower() == current_class: valid_class = 1
         else: valid_class = -1
-        if inside_range(dt_anno['location'][i], current_class, difficulty): ignored_dt.append(1)
+        if not inside_range(dt_anno['location'][i], current_class, difficulty): ignored_dt.append(1)
         elif valid_class == 1: ignored_dt.append(0)
         else: ignored_dt.append(-1)
 
