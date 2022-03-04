@@ -1,7 +1,7 @@
 # dataset settings
 dataset_type = 'InhouseDataset'
 data_root = 'data/inhouse/kitti_format/'
-class_names = ['Pedestrian', 'Cyclist', 'Car', 'Truck']
+class_names = ['Pedestrian', 'Cyclist', 'Car']
 point_cloud_range = [0, -40, -3, 70.4, 40, 1]
 input_modality = dict(use_lidar=True, use_camera=False)
 db_sampler = dict(
@@ -10,16 +10,16 @@ db_sampler = dict(
     rate=1.0,
     prepare=dict(
         filter_by_difficulty=[-1],
-        filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10, Truck=5)),
+        filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10)),
     classes=class_names,
-    sample_groups=dict(Car=12, Pedestrian=6, Cyclist=6, Truck=6))
+    sample_groups=dict(Car=12, Pedestrian=6, Cyclist=6))
 
 file_client_args = dict(backend='disk')
 # Uncomment the following if use ceph or other file clients.
 # See https://mmcv.readthedocs.io/en/latest/api.html#mmcv.fileio.FileClient
 # for more details.
 # file_client_args = dict(
-#     backend='petrel', path_mapping=dict(data='s3://inhouse_data/'))
+#     backend='petrel', path_mapping=dict(data='s3://kitti_data/'))
 
 train_pipeline = [
     dict(
@@ -95,22 +95,25 @@ eval_pipeline = [
     dict(type='Collect3D', keys=['points'])
 ]
 
-train_dataset = dict(
-    type=dataset_type,
-    data_root=data_root,
-    ann_file=data_root + 'inhouse_infos_train.pkl',
-    split='training',
-    pts_prefix='lidar',
-    pipeline=train_pipeline,
-    modality=input_modality,
-    classes=class_names,
-    test_mode=False,
-    box_type_3d='LiDAR')
-
 data = dict(
     samples_per_gpu=6,
     workers_per_gpu=4,
-    train=train_dataset,
+    train=dict(
+        type='RepeatDataset',
+        times=2,
+        dataset=dict(
+            type=dataset_type,
+            data_root=data_root,
+            ann_file=data_root + 'inhouse_infos_train.pkl',
+            split='training',
+            pts_prefix='lidar',
+            pipeline=train_pipeline,
+            modality=input_modality,
+            classes=class_names,
+            test_mode=False,
+            # we use box_type_3d='LiDAR' in inhouse, kitti and nuscenes dataset
+            # and box_type_3d='Depth' in sunrgbd and scannet dataset.
+            box_type_3d='LiDAR')),
     val=dict(
         type=dataset_type,
         data_root=data_root,

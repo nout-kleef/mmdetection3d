@@ -1,0 +1,1 @@
+_base_ = '../../_base_/models/hv_pointpillars_secfpn_kitti.py'

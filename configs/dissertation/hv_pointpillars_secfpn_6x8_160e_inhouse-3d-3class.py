@@ -1,7 +1,7 @@
 _base_ = [
     'models/hv_pointpillars_secfpn_inhouse.py',
     'datasets/inhouse-3d-3class.py',
-    '../_base_/schedules/cyclic_40e.py',
+    '../_base_/schedules/cyclic_40e.py', 
     '../_base_/default_runtime.py'
 ]
 
@@ -67,7 +67,7 @@ test_pipeline = [
 ]
 
 data = dict(
-    train=dict(pipeline=train_pipeline, classes=class_names),
+    train=dict(dataset=dict(pipeline=train_pipeline, classes=class_names)),
     val=dict(pipeline=test_pipeline, classes=class_names),
     test=dict(pipeline=test_pipeline, classes=class_names))
 
@@ -86,10 +86,3 @@ runner = dict(max_epochs=80)
 
 # Use evaluation interval=2 reduce the number of evaluation timese
 evaluation = dict(interval=2)
-
-
-# Experiment settings
-runner = dict(max_epochs=160)
-evaluation = dict(interval=4)
-
-data = dict(samples_per_gpu=11, workers_per_gpu=4)
