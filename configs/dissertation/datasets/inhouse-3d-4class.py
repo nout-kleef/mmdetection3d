@@ -1,7 +1,7 @@
 # dataset settings
 dataset_type = 'InhouseDataset'
 data_root = 'data/inhouse/kitti_format/'
-class_names = ['Pedestrian', 'Cyclist', 'Car', 'Truck']
+class_names = ['Pedestrian', 'Cyclist', 'Car']
 point_cloud_range = [0, -40, -3, 70.4, 40, 1]
 input_modality = dict(use_lidar=True, use_camera=False)
 db_sampler = dict(
@@ -10,9 +10,9 @@ db_sampler = dict(
     rate=1.0,
     prepare=dict(
         filter_by_difficulty=[-1],
-        filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10, Truck=5)),
+        filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10)),
     classes=class_names,
-    sample_groups=dict(Car=12, Pedestrian=6, Cyclist=6, Truck=6))
+    sample_groups=dict(Car=12, Pedestrian=6, Cyclist=6))
 
 file_client_args = dict(backend='disk')
 # Uncomment the following if use ceph or other file clients.
