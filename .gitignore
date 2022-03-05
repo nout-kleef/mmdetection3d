@@ -1,4 +1,7 @@
 vscode*/
+radar_only/
+lidar_tmp/
+radar_tmp/
 results
 tf_logs
 training_full
