@@ -1,4 +1,4 @@
-_base_ = 'pointpillars_inhouse-3class.py'
+_base_ = 'pointpillars_inhouse-3class_radar.py'
 
 # Model setup
 data_root = 'data/inhouse_radar_only/kitti_format/'
