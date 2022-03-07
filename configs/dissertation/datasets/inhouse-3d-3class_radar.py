@@ -1,6 +1,9 @@
 # dataset settings
 dataset_type = 'InhouseDataset'
 data_root = 'data/inhouse_radar_only/kitti_format/'
+pointcloud_dir = 'radar'
+load_dim = 6
+use_dim = 6
 class_names = ['Pedestrian', 'Cyclist', 'Car']
 point_cloud_range = [0, -40, -3, 70.4, 40, 1]
 input_modality = dict(use_lidar=True, use_camera=False)
@@ -12,7 +15,12 @@ db_sampler = dict(
         filter_by_difficulty=[-1],
         filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10)),
     classes=class_names,
-    sample_groups=dict(Car=12, Pedestrian=6, Cyclist=6))
+    sample_groups=dict(Car=12, Pedestrian=0, Cyclist=0),
+    points_loader=dict(
+                type='LoadPointsFromFile',
+                coord_type='LIDAR',
+                load_dim=load_dim,
+                use_dim=use_dim))
 
 file_client_args = dict(backend='disk')
 # Uncomment the following if use ceph or other file clients.
@@ -25,8 +33,8 @@ train_pipeline = [
     dict(
         type='LoadPointsFromFile',
         coord_type='LIDAR',
-        load_dim=4,
-        use_dim=4,
+        load_dim=load_dim,
+        use_dim=use_dim,
         file_client_args=file_client_args),
     dict(
         type='LoadAnnotations3D',
@@ -55,8 +63,8 @@ test_pipeline = [
     dict(
         type='LoadPointsFromFile',
         coord_type='LIDAR',
-        load_dim=4,
-        use_dim=4,
+        load_dim=load_dim,
+        use_dim=use_dim,
         file_client_args=file_client_args),
     dict(
         type='MultiScaleFlipAug3D',
@@ -85,8 +93,8 @@ eval_pipeline = [
     dict(
         type='LoadPointsFromFile',
         coord_type='LIDAR',
-        load_dim=4,
-        use_dim=4,
+        load_dim=load_dim,
+        use_dim=use_dim,
         file_client_args=file_client_args),
     dict(
         type='DefaultFormatBundle3D',
@@ -100,7 +108,7 @@ train_dataset = dict(
     data_root=data_root,
     ann_file=data_root + 'inhouse_infos_train.pkl',
     split='training',
-    pts_prefix='lidar',
+    pts_prefix=pointcloud_dir,
     pipeline=train_pipeline,
     modality=input_modality,
     classes=class_names,
@@ -116,7 +124,7 @@ data = dict(
         data_root=data_root,
         ann_file=data_root + 'inhouse_infos_val.pkl',
         split='training',
-        pts_prefix='lidar',
+        pts_prefix=pointcloud_dir,
         pipeline=test_pipeline,
         modality=input_modality,
         classes=class_names,
@@ -127,7 +135,7 @@ data = dict(
         data_root=data_root,
         ann_file=data_root + 'inhouse_infos_val.pkl',
         split='training',
-        pts_prefix='lidar',
+        pts_prefix=pointcloud_dir,
         pipeline=test_pipeline,
         modality=input_modality,
         classes=class_names,
