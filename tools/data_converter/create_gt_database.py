@@ -109,6 +109,8 @@ def crop_image_patch(pos_proposals, gt_masks, pos_assigned_gt_inds, org_img):
 def create_groundtruth_database(dataset_class_name,
                                 data_path,
                                 info_prefix,
+                                pts_dir,
+                                pts_dtype,
                                 info_path=None,
                                 mask_anno_path=None,
                                 used_classes=None,
@@ -116,7 +118,6 @@ def create_groundtruth_database(dataset_class_name,
                                 db_info_save_path=None,
                                 relative_path=True,
                                 add_rgb=False,
-                                lidar_only=False,
                                 bev_only=False,
                                 coors_range=None,
                                 with_mask=False):
@@ -220,18 +221,14 @@ def create_groundtruth_database(dataset_class_name,
         dataset_cfg.update(
             test_mode=False,
             split='training',
-            modality=dict(
-                use_lidar=True,
-                use_depth=False,
-                use_lidar_intensity=False,  # TODO
-                use_camera=False,
-            ),
+            pts_prefix=pts_dir,
+            modality=dict(),
             pipeline=[
                 dict(
                     type='LoadPointsFromFile',
                     coord_type='LIDAR',
-                    load_dim=4,
-                    use_dim=4,
+                    load_dim=len(pts_dtype),
+                    use_dim=len(pts_dtype),
                     file_client_args=file_client_args),
                 dict(
                     type='LoadAnnotations3D',

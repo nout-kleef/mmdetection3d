@@ -440,6 +440,8 @@ def get_waymo_image_info(path,
     return list(image_infos)
 
 def get_inhouse_image_info(path,
+                         pts_dir,
+                         pts_dtype,
                          labels=False,
                          calib=False,
                          pose=False,
@@ -448,12 +450,12 @@ def get_inhouse_image_info(path,
                          num_worker=8,
                          relative_path=True):
     """
-    Inhouse annotation format version like KITTI: TODO
+    Inhouse annotation format version like KITTI:
     {
         [optional]points: [N, 3+] point cloud
-        lidar_pc: { TODO: add radar
-            num_features: 4
-            lidar_path: ...
+        pts_pc: {
+            num_features: ...,
+            path: ...
         }
         [optional, for kitti]calib: {
             R0_rect: ...
@@ -479,9 +481,9 @@ def get_inhouse_image_info(path,
 
     def map_func(idx):
         info = {
-            'lidar_pc': {
-                'num_features': 4,
-                'path': _get_path(idx, root_path, 'lidar', 'bin', relative=relative_path),
+            'pts_pc': {
+                'num_features': len(pts_dtype),
+                'path': _get_path(idx, root_path, pts_dir, 'bin', relative=relative_path),
             },
             'calib': {},
             'timestamp': idx,

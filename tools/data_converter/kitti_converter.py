@@ -86,16 +86,17 @@ def _calculate_num_points_in_gt(data_path,
 def _inhouse_calculate_num_points_in_gt(data_path,
                                         infos,
                                         relative_path,
-                                        remove_outside=True,
-                                        num_features=4):
+                                        pts_dtype):
+    for _, dt in pts_dtype:
+        assert dt == 'f4'  # simplify loading
     for info in mmcv.track_iter_progress(infos):
-        pc_info = info['lidar_pc']
+        pc_info = info['pts_pc']
         calib = info['calib']
         if relative_path:
             v_path = str(Path(data_path) / pc_info['path'])
         else:
             v_path = pc_info['path']
-        points_v = np.fromfile(v_path, dtype=np.float32, count=-1).reshape([-1, num_features])
+        points_v = np.fromfile(v_path, dtype=np.float32, count=-1).reshape([-1, len(pts_dtype)])
         rect = calib['R0_rect']
 
         # points_v = points_v[points_v[:, 0] > 0]
@@ -105,8 +106,8 @@ def _inhouse_calculate_num_points_in_gt(data_path,
         dims = annos['dimensions'][:num_obj]  # TODO: is it safe to assume that all DontCares come last?
         loc = annos['location'][:num_obj]
         rots = annos['rotation_y'][:num_obj]
-        gt_boxes_lidar = np.concatenate([loc, dims, rots[..., np.newaxis]], axis=1)
-        indices = box_np_ops.points_in_rbbox(points_v[:, :3], gt_boxes_lidar)
+        gt_boxes_pts = np.concatenate([loc, dims, rots[..., np.newaxis]], axis=1)
+        indices = box_np_ops.points_in_rbbox(points_v[:, :3], gt_boxes_pts)
         num_points_in_gt = indices.sum(0)
         num_ignored = len(annos['dimensions']) - num_obj
         num_points_in_gt = np.concatenate([num_points_in_gt, -np.ones([num_ignored])])
@@ -256,9 +257,11 @@ def create_waymo_info_file(data_path,
     mmcv.dump(waymo_infos_test, filename)
 
 def create_inhouse_info_file(data_path,
-                           pkl_prefix='inhouse',
-                           save_path=None,
-                           relative_path=True):
+                             pts_dir,
+                             pts_dtype,
+                             pkl_prefix='inhouse',
+                             save_path=None,
+                             relative_path=True):
     """Create info file of inhouse dataset.
 
     Given the raw data, generate its related info file in pkl format.
@@ -275,17 +278,16 @@ def create_inhouse_info_file(data_path,
     val_timestamps = _read_imageset_file(str(imageset_folder / 'val.txt'))
     test_timestamps = _read_imageset_file(str(imageset_folder / 'test.txt'))
 
-    lidar_pc_dim = 4
     calib = True
     pose = False
 
     print('Generate info. this may take several minutes.')
-    if save_path is None:
-        save_path = Path(data_path)
-    else:
-        save_path = Path(save_path)
+    if save_path is None: save_path = Path(data_path)
+    else: save_path = Path(save_path)
     inhouse_infos_train = get_inhouse_image_info(
         data_path,
+        pts_dir,
+        pts_dtype,
         labels=True,
         calib=calib,
         pose=pose,
@@ -295,13 +297,14 @@ def create_inhouse_info_file(data_path,
         data_path,
         inhouse_infos_train,
         relative_path,
-        num_features=lidar_pc_dim,
-        remove_outside=False)
+        pts_dtype)
     filename = save_path / f'{pkl_prefix}_infos_train.pkl'
     print(f'Inhouse info train file is saved to {filename}')
     mmcv.dump(inhouse_infos_train, filename)
     inhouse_infos_val = get_inhouse_image_info(
         data_path,
+        pts_dir,
+        pts_dtype,
         labels=True,
         calib=calib,
         pose=pose,
@@ -311,8 +314,7 @@ def create_inhouse_info_file(data_path,
         data_path,
         inhouse_infos_val,
         relative_path,
-        num_features=lidar_pc_dim,
-        remove_outside=False)
+        pts_dtype)
     filename = save_path / f'{pkl_prefix}_infos_val.pkl'
     print(f'Inhouse info val file is saved to {filename}')
     mmcv.dump(inhouse_infos_val, filename)
@@ -321,6 +323,8 @@ def create_inhouse_info_file(data_path,
     mmcv.dump(inhouse_infos_train + inhouse_infos_val, filename)
     inhouse_infos_test = get_inhouse_image_info(
         data_path,
+        pts_dir,
+        pts_dtype,
         labels=False,
         calib=calib,
         pose=pose,
