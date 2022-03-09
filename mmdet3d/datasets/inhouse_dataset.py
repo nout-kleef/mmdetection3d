@@ -51,7 +51,7 @@ class InhouseDataset(KittiDataset):
                  data_root,
                  ann_file,
                  split,
-                 pts_prefix='lidar',
+                 pts_prefix,
                  pipeline=None,
                  classes=None,
                  modality=None,
@@ -73,15 +73,15 @@ class InhouseDataset(KittiDataset):
             test_mode=test_mode,
             pcd_limit_range=pcd_limit_range)
 
-        self.CLASSES = ('car', 'cyclist', 'pedestrian', 'truck')
+        self.CLASSES = ('car', 'cyclist', 'pedestrian')
 
         # to load a subset, just set the load_interval in the dataset config
         self.data_infos = self.data_infos[::load_interval]
         if hasattr(self, 'flag'):
             self.flag = self.flag[::load_interval]
 
-    def _get_pts_filename(self, ts):
-        return osp.join(self.data_root, self.pts_prefix, f'{ts}.bin')
+    def _get_pts_filename(self, info):
+        return osp.join(self.data_root, info['pts_pc']['path'])
 
     def get_data_info(self, index):
         """Get data info according to the given index.
@@ -110,7 +110,7 @@ class InhouseDataset(KittiDataset):
         # P0 = info['calib']['P0'].astype(np.float32)
         # lidar2img = P0 @ rect @ Trv2c
 
-        pts_filename = self._get_pts_filename(sample_idx)
+        pts_filename = self._get_pts_filename(info)
         input_dict = dict(
             sample_idx=sample_idx,
             pts_filename=pts_filename,

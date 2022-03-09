@@ -197,6 +197,13 @@ def inhouse_data_prep(root_path,
     """
     from tools.data_converter import inhouse_converter as inhouse
 
+    modality_to_dtype = {
+        'radar': [('x', 'f4'), ('y', 'f4'), ('z', 'f4'), ('fSpeed', 'f4'), ('fPower', 'f4'), ('fRCS', 'f4')],
+        'lidar': [('x', 'f4'), ('y', 'f4'), ('z', 'f4'), ('intensity', 'f4')]
+    }
+    modalities = ['radar'] if version == 'radar' else ['lidar']
+    assert len(modalities) == 1, 'multi-modality not supported yet'
+
     splits = ['training', 'validation', 'testing']
     for _, split in enumerate(splits):
         load_dir = osp.join(root_path, 'inhouse_format')
@@ -210,11 +217,17 @@ def inhouse_data_prep(root_path,
         converter.convert()
     # Generate inhouse infos
     out_dir = osp.join(out_dir, 'kitti_format')
-    kitti.create_inhouse_info_file(out_dir, info_prefix)
+    kitti.create_inhouse_info_file(
+        out_dir,
+        modalities[0],
+        modality_to_dtype[modalities[0]],
+        info_prefix)
     create_groundtruth_database(
         'InhouseDataset',
         out_dir,
         info_prefix,
+        modalities[0],
+        modality_to_dtype[modalities[0]],
         f'{out_dir}/{info_prefix}_infos_train.pkl',
         relative_path=False,
         with_mask=False)

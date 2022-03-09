@@ -1,13 +1,15 @@
 _base_ = [
-    '../_base_/models/hv_pointpillars_secfpn_inhouse.py',
-    'datasets/inhouse-3d-4class.py',
+    'models/model_radar.py',
+    'datasets/inhouse-3d-3class_radar.py',
     '../_base_/schedules/cyclic_40e.py',
     '../_base_/default_runtime.py'
 ]
 
-point_cloud_range = [0, -39.68, -3, 69.12, 39.68, 1]
+point_cloud_range = [0, -39.68, -2, 69.12, 39.68, 2]
 # dataset settings
-data_root = 'data/inhouse/kitti_format/'
+data_root = 'data/inhouse_radar_only/kitti_format/'
+load_dim = 6
+use_dim = 6
 class_names = ['Pedestrian', 'Cyclist', 'Car']
 # PointPillars adopted a different sampling strategies among classes
 db_sampler = dict(
@@ -18,11 +20,16 @@ db_sampler = dict(
         filter_by_difficulty=[-1],
         filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10)),
     classes=class_names,
-    sample_groups=dict(Car=15, Pedestrian=10, Cyclist=10))
+    sample_groups=dict(Car=15, Pedestrian=0, Cyclist=0),
+    points_loader=dict(
+                type='LoadPointsFromFile',
+                coord_type='LIDAR',
+                load_dim=load_dim,
+                use_dim=use_dim))
 
 # PointPillars uses different augmentation hyper parameters
 train_pipeline = [
-    dict(type='LoadPointsFromFile', coord_type='LIDAR', load_dim=4, use_dim=4),
+    dict(type='LoadPointsFromFile', coord_type='LIDAR', load_dim=load_dim, use_dim=use_dim),
     dict(type='LoadAnnotations3D', with_bbox_3d=True, with_label_3d=True),
     dict(type='ObjectSample', db_sampler=db_sampler),
     dict(
@@ -43,7 +50,7 @@ train_pipeline = [
     dict(type='Collect3D', keys=['points', 'gt_bboxes_3d', 'gt_labels_3d'])
 ]
 test_pipeline = [
-    dict(type='LoadPointsFromFile', coord_type='LIDAR', load_dim=4, use_dim=4),
+    dict(type='LoadPointsFromFile', coord_type='LIDAR', load_dim=load_dim, use_dim=use_dim),
     dict(
         type='MultiScaleFlipAug3D',
         img_scale=(1333, 800),
