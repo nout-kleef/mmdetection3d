@@ -5,7 +5,7 @@ _base_ = [
     '../_base_/default_runtime.py'
 ]
 
-point_cloud_range = [0, -39.68, -3, 69.12, 39.68, 1]
+point_cloud_range = [0, -39.68, -2, 69.12, 39.68, 2]
 # dataset settings
 data_root = 'data/inhouse_radar_only/kitti_format/'
 load_dim = 6
