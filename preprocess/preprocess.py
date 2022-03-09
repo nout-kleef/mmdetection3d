@@ -4,7 +4,7 @@ import shutil
 import os
 from pathlib import Path
 import lxml.etree
-import read_raw, extract_gt, pcl_sync, copy_lidar, partition, vis_pcl
+import read_raw, extract_gt, pcl_sync, copy_lidar, partition, vis_pcl, filter_radar_label
 
 def _purge(paths):
     for path in paths:
@@ -66,6 +66,7 @@ def main():
     parser.add_argument('--skip_copy_lidar', action='store_true', help='skip copy_lidar.py')
     parser.add_argument('--skip_partition', action='store_true', help='skip partition.py')
     # parser.add_argument('--skip_vis_pcl', action='store_true', help='skip vis_pcl.py')
+    parser.add_argument('--skip_label_filter', action='store_true', help='skip radar_label_filter.py')
     parser.add_argument('-y', action='store_true', help='assume yes')
     args = parser.parse_args()
 
@@ -80,7 +81,8 @@ def main():
     for dir in dirs:
         base_timestamps[dir] = _get_base_timestamps(dir)
         print(f'Using {base_timestamps[dir]} as base timestamps (from {dir}/meta.xml)')
-
+    # import ipdb
+    # ipdb.set_trace()
     print('*** STEP 1 - read_raw.py ***')
     if not args.skip_read_raw:
         for dir in dirs:
@@ -110,11 +112,17 @@ def main():
             copy_lidar.copy_lidar(dir, args.save_dir)
     else: print('(skipped)')
 
-    print('*** STEP 5 - partition.py ***')
-    if not args.skip_partition: 
-        partition.partition(args.save_dir)
+    print('*** STEP 5 - filter_radar_label.py ***')
+    if not args.skip_label_filter: 
+        filter_radar_label.filter_radar_label(args.save_dir)
     else: print('(skipped)')
 
+
+    print('*** STEP 6 - partition.py ***')
+    if not args.skip_partition: 
+        partition.partition(args.save_dir)
+        _purge(_raw_paths)  # remove unsynced gt and radar data to save storage
+    else: print('(skipped)')
     # print('*** STEP 6 - vis_pcl.py ***')
     # if not args.skip_vis_pcl: 
     #     for dir in dirs:

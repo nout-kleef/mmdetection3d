@@ -1,0 +1,1 @@
+python ./preprocess.py /public/inhouse /public/shangqi 

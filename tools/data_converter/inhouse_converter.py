@@ -37,8 +37,9 @@ class Inhouse2KITTI(object):
             4.0: 'Truck'
         }
 
-        self.lidar_transform = self.get_matrix_from_ext([0.00,  0.0, -0.3, -2.5, 0,   0])
-        self.radar_transform = self.get_matrix_from_ext([0.06, -0.2,  0.7, -3.5, 2, 180])
+        # update extrinsic parameters
+        self.lidar_transform = self.get_matrix_from_ext([0, 0, 0, -1, 2, 0])
+        self.radar_transform = self.get_matrix_from_ext([0.06, -0.2, 0.2, -1, 2, 180])
 
         self.load_dir = load_dir
         self.save_dir = save_dir
