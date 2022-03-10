@@ -8,10 +8,6 @@ import copy
 from tqdm import tqdm
 import shutil
 
-# for 20220126
-lidar_ext = [0, 0, 0, -1, 2, 0]
-radar_ext = [0.06, -0.2, 0.2, -1, 2, 180]
-
 def csv2geometry(fname, fix_height=None):
 
     radar_data = np.loadtxt(
@@ -61,6 +57,19 @@ def get_bbx_param(obj_info, scale=1.1):
     obbx = o3d.geometry.OrientedBoundingBox(center.T, rot_m, extent.T)
     return obbx
 
+ext_params = {
+    '0118': {
+        'lidar': get_matrix_from_ext([0.00, 0.0, -0.3, -2.5, 0.0, 0]),
+        'radar': get_matrix_from_ext([0.06, -0.2, 0.7, -3.5, 2.0, 180]),
+    },
+    '0126': {
+        'lidar': get_matrix_from_ext([0.00, 0.0, 0.0, -1.0, 2.0, 0]),
+        'radar': get_matrix_from_ext([0.06, -0.2, 0.2, -1.0, 2.0, 180]),
+    }
+}
+
+def get_date_key(ts):
+    return '0118' if ts < 1643000000000 else '0126'
 
 def filter_radar_label(save_dir, filter_num=3):
     
@@ -72,10 +81,11 @@ def filter_radar_label(save_dir, filter_num=3):
         os.mkdir(filtered_path)
     for idx in tqdm(range(len(radar_files))):
         gt_name = gt_files[idx].split('/')[-1]
+        ts = int(gt_name[:-4])
         save_gt_name = os.path.join(filtered_path, gt_name)
         radar_pcd = csv2geometry(radar_files[idx])
-        radar_tr = get_matrix_from_ext(radar_ext)
-        radar_pcd.transform(radar_tr)
+        collection_date = get_date_key(ts)
+        radar_pcd.transform(ext_params[collection_date]['radar'])
         box_list = []
         gt_name = gt_files[idx].split('/')[-1]
         save_gt_name = os.path.join(filtered_path, gt_name)

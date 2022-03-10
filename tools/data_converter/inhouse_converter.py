@@ -5,6 +5,30 @@ import open3d as o3d
 from scipy.spatial.transform import Rotation as R
 
 
+def get_matrix_from_ext(ext):
+    rot = R.from_euler('ZYX', ext[3:], degrees=True)
+    rot_m = rot.as_matrix()
+    x, y, z = ext[:3]
+    tr = np.eye(4)
+    tr[:3,:3] = rot_m
+    tr[:3, 3] = np.array([x, y, z]).T
+    return tr
+
+def get_date_key(ts):
+    return '0118' if ts < 1643000000000 else '0126'
+    
+ext_params = {
+    '0118': {
+        'lidar': get_matrix_from_ext([0.00, 0.0, -0.3, -2.5, 0.0, 0]),
+        'radar': get_matrix_from_ext([0.06, -0.2, 0.7, -3.5, 2.0, 180]),
+    },
+    '0126': {
+        'lidar': get_matrix_from_ext([0.00, 0.0, 0.0, -1.0, 2.0, 0]),
+        'radar': get_matrix_from_ext([0.06, -0.2, 0.2, -1.0, 2.0, 180]),
+    }
+}
+
+
 class InhouseLabel2Kitti:
     def __init__(self, inhouse_label, classname_dict):
         self._class = classname_dict[inhouse_label[1]]
@@ -58,10 +82,6 @@ class Inhouse2KITTI(object):
             3.0: 'Car',
             4.0: 'Truck'
         }
-
-        # update extrinsic parameters
-        self.lidar_transform = self.get_matrix_from_ext([0, 0, 0, -1, 2, 0])
-        self.radar_transform = self.get_matrix_from_ext([0.06, -0.2, 0.2, -1, 2, 180])
 
         self.load_dir = load_dir
         self.save_dir = save_dir
@@ -138,7 +158,8 @@ class Inhouse2KITTI(object):
         radar_points_xyz = np.column_stack((radar_data['x'], radar_data['y'], radar_data['z']))
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(radar_points_xyz)
-        pcd.transform(self.radar_transform)
+        collection_date = get_date_key(ts)
+        pcd.transform(ext_params[collection_date]['radar'])
         # save transformed pointcloud
         radar_points_aux = np.column_stack((radar_data['fSpeed'], radar_data['fPower'], radar_data['fRCS']))
         radar_data = np.column_stack((pcd.points, radar_points_aux))
@@ -149,7 +170,8 @@ class Inhouse2KITTI(object):
         pcd_file = os.path.join(self.lidar_path, f'{ts}.pcd')
         pcd_data = o3d.io.read_point_cloud(pcd_file)
         # transform to ground-truth coordinate system
-        pcd_data.transform(self.lidar_transform)
+        collection_date = get_date_key(ts)
+        pcd_data.transform(ext_params[collection_date]['lidar'])
         pc_path = os.path.join(self.lidar_save_dir, f'{ts}.bin')
         intensity = np.ones((len(pcd_data.points), ))
         point_cloud = np.column_stack((pcd_data.points, intensity))
@@ -246,15 +268,6 @@ class Inhouse2KITTI(object):
         ]
         for d in dir_list:
             mmcv.mkdir_or_exist(d)
-
-    def get_matrix_from_ext(self, ext):
-        rot = R.from_euler('ZYX', ext[3:], degrees=True)
-        rot_m = rot.as_matrix()
-        x, y, z = ext[:3]
-        tr = np.eye(4)
-        tr[:3,:3] = rot_m
-        tr[:3, 3] = np.array([x, y, z]).T
-        return tr
 
     def cart_to_homo(self, mat):
         """Convert transformation matrix in Cartesian coordinates to
