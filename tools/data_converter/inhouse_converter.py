@@ -12,12 +12,12 @@ class InhouseLabel2Kitti:
         self._occl = -1
         self._alpha = -10
         self._bbox = [-1, -1, -1, -1]
-        self._x = inhouse_label[2]
-        self._y = inhouse_label[3]
-        self._z = inhouse_label[4]
         self._length = inhouse_label[5]
         self._width = inhouse_label[6]
         self._height = inhouse_label[7]
+        self._x = inhouse_label[2]
+        self._y = inhouse_label[3]
+        self._z = inhouse_label[4] - self._height / 2.0
         self._roty = inhouse_label[9]
 
     def __repr__(self) -> str:
