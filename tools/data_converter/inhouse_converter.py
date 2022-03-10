@@ -5,6 +5,28 @@ import open3d as o3d
 from scipy.spatial.transform import Rotation as R
 
 
+class InhouseLabel2Kitti:
+    def __init__(self, inhouse_label, classname_dict):
+        self._class = classname_dict[inhouse_label[1]]
+        self._trunc = -1
+        self._occl = -1
+        self._alpha = -10
+        self._bbox = [-1, -1, -1, -1]
+        self._x = inhouse_label[2]
+        self._y = inhouse_label[3]
+        self._z = inhouse_label[4]
+        self._length = inhouse_label[5]
+        self._width = inhouse_label[6]
+        self._height = inhouse_label[7]
+        self._roty = inhouse_label[9]
+
+    def __repr__(self) -> str:
+        return f'{self._class} {self._trunc} {self._occl} {self._alpha} '\
+            f'{self._bbox[0]} {self._bbox[1]} {self._bbox[2]} {self._bbox[3]} '\
+            f'{self._height:.2f} {self._width:.2f} {self._length:.2f} '\
+            f'{self._x:.2f} {self._y:.2f} {self._z:.2f} '\
+            f'{self._roty:.2f}'
+
 class Inhouse2KITTI(object):
     """Inhouse to KITTI converter.
 
@@ -138,6 +160,7 @@ class Inhouse2KITTI(object):
         """Parse and save the label data in txt format.
         The relation between inhouse and kitti coordinates is noteworthy:
         1. l,w,h (inhouse) --> h,w,l (kitti)
+        2. bbox origin at volumetric center (inhouse) -> bottom center (kitti)
         """
         label_load_path = os.path.join(self.gt_path, f'{ts}.csv')
         label_save_path = os.path.join(self.label_save_dir, f'{ts}.txt')
@@ -159,10 +182,8 @@ class Inhouse2KITTI(object):
             raise
         with open(label_save_path, 'w') as fp:
             for label in labels:
-                fp.write(f'{self.inhouse_to_kitti_class_map[label[1]]} -1 -1 -10 -1 -1 -1 -1 '\
-                    f'{label[7]:.2f} {label[6]:.2f} {label[5]:.2f} '\
-                    f'{label[2]:.2f} {label[3]:.2f} {label[4]:.2f} '\
-                    f'{label[9]:.2f}\n')
+                kitti_label = InhouseLabel2Kitti(label, self.inhouse_to_kitti_class_map)
+                fp.write(f'{kitti_label}\n')
 
     def save_radar_label(self, ts):
         """Parse and save the label data in txt format.
