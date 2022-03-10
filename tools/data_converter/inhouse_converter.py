@@ -37,8 +37,9 @@ class Inhouse2KITTI(object):
             4.0: 'Truck'
         }
 
-        self.lidar_transform = self.get_matrix_from_ext([0.00,  0.0, -0.3, -2.5, 0,   0])
-        self.radar_transform = self.get_matrix_from_ext([0.06, -0.2,  0.7, -3.5, 2, 180])
+        # update extrinsic parameters
+        self.lidar_transform = self.get_matrix_from_ext([0, 0, 0, -1, 2, 0])
+        self.radar_transform = self.get_matrix_from_ext([0.06, -0.2, 0.2, -1, 2, 180])
 
         self.load_dir = load_dir
         self.save_dir = save_dir
@@ -52,6 +53,7 @@ class Inhouse2KITTI(object):
         elif split == 'testing': self.split_file = 'test.txt'
         self.split_dir = 'testing' if self.test_mode else 'training'
 
+        self.radar_gt_path = os.path.join(self.load_dir, 'radar_gt')
         self.gt_path = os.path.join(self.load_dir, 'gt')
         self.radar_path = os.path.join(self.load_dir, 'radar')
         self.lidar_path = os.path.join(self.load_dir, 'lidar')
@@ -59,7 +61,8 @@ class Inhouse2KITTI(object):
         self.calib_save_dir = os.path.join(self.save_dir, 'calib')
         self.lidar_save_dir = os.path.join(self.save_dir, 'lidar')
         self.radar_save_dir = os.path.join(self.save_dir, 'radar')
-        for dir in [self.label_save_dir, self.calib_save_dir, self.lidar_save_dir, self.radar_save_dir]:
+        self.radar_gt_save_dir = os.path.join(self.save_dir, 'label_r')
+        for dir in [self.label_save_dir, self.calib_save_dir, self.lidar_save_dir, self.radar_save_dir, self.radar_gt_save_dir]:
             if not os.path.exists(dir):
                 os.makedirs(dir)
 
@@ -83,6 +86,7 @@ class Inhouse2KITTI(object):
         self.save_calib(ts)
         self.save_lidar(ts)
         self.save_radar(ts)
+        self.save_radar_label(ts)
         if not self.test_mode:
             self.save_label(ts)
 
@@ -159,6 +163,46 @@ class Inhouse2KITTI(object):
                     f'{label[7]:.2f} {label[6]:.2f} {label[5]:.2f} '\
                     f'{label[2]:.2f} {label[3]:.2f} {label[4]:.2f} '\
                     f'{label[9]:.2f}\n')
+
+    def save_radar_label(self, ts):
+        """Parse and save the label data in txt format.
+        The relation between inhouse and kitti coordinates is noteworthy:
+        1. l,w,h (inhouse) --> h,w,l (kitti)
+        """
+        label_load_path = os.path.join(self.radar_gt_path, f'{ts}.csv')
+        fsize = os.path.getsize(label_load_path)
+        if fsize == 0:
+            # skip processing empty file
+            # self.radar_gt_path, f'{ts}.csv'
+            save_path = os.path.join(self.radar_gt_save_dir, f'{ts}.txt')
+            gt = np.array([])
+            np.savetxt(save_path, gt, fmt='%s')
+            pass
+        else:
+            
+            label_save_path = os.path.join(self.radar_gt_save_dir, f'{ts}.txt')
+            try: 
+                labels = np.loadtxt(
+                    label_load_path,
+                    delimiter=' ',
+                    ndmin=1,
+                    dtype=[
+                        ('id', 'u1'), ('class', 'u1'),
+                        ('x', 'f4'), ('y', 'f4'), ('z', 'f4'),
+                        ('l', 'f4'), ('w', 'f4'), ('h', 'f4'),
+                        ('rx', 'f4'), ('ry', 'f4'), ('rz', 'f4'),
+                        ('unknown', 'u4')
+                    ]
+                )
+            except ValueError:
+                print(f'Failed to convert labels for timestamp {ts}. Path: {label_load_path}')
+                raise
+            with open(label_save_path, 'w') as fp:
+                for label in labels:
+                    fp.write(f'{self.inhouse_to_kitti_class_map[label[1]]} -1 -1 -10 -1 -1 -1 -1 '\
+                        f'{label[7]:.2f} {label[6]:.2f} {label[5]:.2f} '\
+                        f'{label[2]:.2f} {label[3]:.2f} {label[4]:.2f} '\
+                        f'{label[9]:.2f}\n')
 
     def save_calib(self, ts):
         """Parse and save the calibration data."""
