@@ -108,9 +108,8 @@ class Inhouse2KITTI(object):
         self.save_calib(ts)
         self.save_lidar(ts)
         self.save_radar(ts)
-        self.save_radar_label(ts)
-        if not self.test_mode:
-            self.save_label(ts)
+        self.save_radar_label(ts)  # bboxes without nearby radar points filtered out
+        self.save_label(ts)
 
     def __len__(self):
         return len(self.timestamps)
@@ -242,11 +241,11 @@ class Inhouse2KITTI(object):
             self.calib_save_dir,
             self.lidar_save_dir,
             self.radar_save_dir,
+            self.label_save_dir,
+            self.radar_gt_save_dir
         ]
         for d in dir_list:
             mmcv.mkdir_or_exist(d)
-        if not self.test_mode:
-            mmcv.mkdir_or_exist(self.label_save_dir)
 
     def get_matrix_from_ext(self, ext):
         rot = R.from_euler('ZYX', ext[3:], degrees=True)
