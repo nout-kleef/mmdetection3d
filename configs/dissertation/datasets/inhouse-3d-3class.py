@@ -1,8 +1,8 @@
 # dataset settings
 dataset_type = 'InhouseDataset'
-data_root = 'data/inhouse/kitti_format/'
+data_root = 'data/inhouse_filtered/kitti_format/'
 class_names = ['Pedestrian', 'Cyclist', 'Car']
-point_cloud_range = [0, -40, -3, 70.4, 40, 1]
+point_cloud_range = [0, -40, -2.75, 70.4, 40, 1.25]
 input_modality = dict(use_lidar=True, use_camera=False)
 db_sampler = dict(
     data_root=data_root,

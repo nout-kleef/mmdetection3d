@@ -1,13 +1,13 @@
 _base_ = [
-    '../_base_/models/hv_pointpillars_secfpn_inhouse.py',
-    'datasets/inhouse-3d-4class.py',
+    'models/model.py',
+    'datasets/inhouse-3d-3class.py',
     '../_base_/schedules/cyclic_40e.py',
     '../_base_/default_runtime.py'
 ]
 
-point_cloud_range = [0, -39.68, -3, 69.12, 39.68, 1]
+point_cloud_range = [0, -39.68, -2.75, 69.12, 39.68, 1.25]
 # dataset settings
-data_root = 'data/inhouse/kitti_format/'
+data_root = 'data/inhouse_filtered/kitti_format/'
 class_names = ['Pedestrian', 'Cyclist', 'Car']
 # PointPillars adopted a different sampling strategies among classes
 db_sampler = dict(
