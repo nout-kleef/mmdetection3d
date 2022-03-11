@@ -158,7 +158,7 @@ class Inhouse2KITTI(object):
         radar_points_xyz = np.column_stack((radar_data['x'], radar_data['y'], radar_data['z']))
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(radar_points_xyz)
-        collection_date = get_date_key(ts)
+        collection_date = get_date_key(int(ts))
         pcd.transform(ext_params[collection_date]['radar'])
         # save transformed pointcloud
         radar_points_aux = np.column_stack((radar_data['fSpeed'], radar_data['fPower'], radar_data['fRCS']))
@@ -170,7 +170,7 @@ class Inhouse2KITTI(object):
         pcd_file = os.path.join(self.lidar_path, f'{ts}.pcd')
         pcd_data = o3d.io.read_point_cloud(pcd_file)
         # transform to ground-truth coordinate system
-        collection_date = get_date_key(ts)
+        collection_date = get_date_key(int(ts))
         pcd_data.transform(ext_params[collection_date]['lidar'])
         pc_path = os.path.join(self.lidar_save_dir, f'{ts}.bin')
         intensity = np.ones((len(pcd_data.points), ))
