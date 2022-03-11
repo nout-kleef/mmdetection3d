@@ -379,7 +379,7 @@ data = dict(
         test_mode=True,
         box_type_3d='LiDAR'))
 evaluation = dict(
-    interval=1,
+    interval=4,
     pipeline=[
         dict(
             type='LoadPointsFromFile',
@@ -416,6 +416,6 @@ dist_params = dict(backend='nccl')
 log_level = 'INFO'
 work_dir = 'lidar_xyz'
 load_from = None
-resume_from = None
+resume_from = 'lidar_xyz/epoch_2.pth'
 workflow = [('train', 1)]
 gpu_ids = [0]
