@@ -3,7 +3,7 @@ model = dict(
     type='VoxelNet',
     voxel_layer=dict(
         max_num_points=32,
-        point_cloud_range=[0, -39.68, -2, 69.12, 39.68, 2],
+        point_cloud_range=[0, -39.68, -2.75, 69.12, 39.68, 1.25],
         voxel_size=[0.16, 0.16, 4],
         max_voxels=(16000, 40000)),
     voxel_encoder=dict(
@@ -12,7 +12,7 @@ model = dict(
         feat_channels=[64],
         with_distance=False,
         voxel_size=[0.16, 0.16, 4],
-        point_cloud_range=[0, -39.68, -2, 69.12, 39.68, 2]),
+        point_cloud_range=[0, -39.68, -2.75, 69.12, 39.68, 1.25]),
     middle_encoder=dict(
         type='PointPillarsScatter', in_channels=64, output_shape=[496, 432]),
     backbone=dict(
@@ -87,14 +87,14 @@ model = dict(
         min_bbox_size=0,
         nms_pre=100,
         max_num=50))
-_point_cloud_range = [0, -39.68, -2, 69.12, 39.68, 2]
+_point_cloud_range = [0, -39.68, -2.75, 69.12, 39.68, 1.25]
 dataset_type = 'InhouseDataset'
 data_root = 'data/inhouse_filtered_radar/kitti_format/'
 pointcloud_dir = 'radar'
 load_dim = 6
 use_dim = 6
 class_names = ['Pedestrian', 'Cyclist', 'Car']
-point_cloud_range = [0, -39.68, -2, 69.12, 39.68, 2]
+point_cloud_range = [0, -39.68, -2.75, 69.12, 39.68, 1.25]
 input_modality = dict(use_lidar=True, use_camera=False)
 db_sampler = dict(
     data_root='data/inhouse_filtered_radar/kitti_format/',
@@ -142,10 +142,10 @@ train_pipeline = [
         scale_ratio_range=[0.95, 1.05]),
     dict(
         type='PointsRangeFilter',
-        point_cloud_range=[0, -39.68, -2, 69.12, 39.68, 2]),
+        point_cloud_range=[0, -39.68, -2.75, 69.12, 39.68, 1.25]),
     dict(
         type='ObjectRangeFilter',
-        point_cloud_range=[0, -39.68, -2, 69.12, 39.68, 2]),
+        point_cloud_range=[0, -39.68, -2.75, 69.12, 39.68, 1.25]),
     dict(type='PointShuffle'),
     dict(
         type='DefaultFormatBundle3D',
@@ -168,7 +168,7 @@ test_pipeline = [
             dict(type='RandomFlip3D'),
             dict(
                 type='PointsRangeFilter',
-                point_cloud_range=[0, -39.68, -2, 69.12, 39.68, 2]),
+                point_cloud_range=[0, -39.68, -2.75, 69.12, 39.68, 1.25]),
             dict(
                 type='DefaultFormatBundle3D',
                 class_names=['Pedestrian', 'Cyclist', 'Car'],
@@ -238,10 +238,10 @@ train_dataset = dict(
             scale_ratio_range=[0.95, 1.05]),
         dict(
             type='PointsRangeFilter',
-            point_cloud_range=[0, -40, -2, 70.4, 40, 2]),
+            point_cloud_range=[0, -40, -2.75, 70.4, 40, 1.25]),
         dict(
             type='ObjectRangeFilter',
-            point_cloud_range=[0, -40, -2, 70.4, 40, 2]),
+            point_cloud_range=[0, -40, -2.75, 70.4, 40, 1.25]),
         dict(type='PointShuffle'),
         dict(
             type='DefaultFormatBundle3D',
@@ -304,10 +304,10 @@ data = dict(
                 scale_ratio_range=[0.95, 1.05]),
             dict(
                 type='PointsRangeFilter',
-                point_cloud_range=[0, -39.68, -2, 69.12, 39.68, 2]),
+                point_cloud_range=[0, -39.68, -2.75, 69.12, 39.68, 1.25]),
             dict(
                 type='ObjectRangeFilter',
-                point_cloud_range=[0, -39.68, -2, 69.12, 39.68, 2]),
+                point_cloud_range=[0, -39.68, -2.75, 69.12, 39.68, 1.25]),
             dict(type='PointShuffle'),
             dict(
                 type='DefaultFormatBundle3D',
@@ -347,7 +347,9 @@ data = dict(
                     dict(type='RandomFlip3D'),
                     dict(
                         type='PointsRangeFilter',
-                        point_cloud_range=[0, -39.68, -2, 69.12, 39.68, 2]),
+                        point_cloud_range=[
+                            0, -39.68, -2.75, 69.12, 39.68, 1.25
+                        ]),
                     dict(
                         type='DefaultFormatBundle3D',
                         class_names=['Pedestrian', 'Cyclist', 'Car'],
@@ -386,7 +388,9 @@ data = dict(
                     dict(type='RandomFlip3D'),
                     dict(
                         type='PointsRangeFilter',
-                        point_cloud_range=[0, -39.68, -2, 69.12, 39.68, 2]),
+                        point_cloud_range=[
+                            0, -39.68, -2.75, 69.12, 39.68, 1.25
+                        ]),
                     dict(
                         type='DefaultFormatBundle3D',
                         class_names=['Pedestrian', 'Cyclist', 'Car'],
@@ -399,7 +403,7 @@ data = dict(
         test_mode=True,
         box_type_3d='LiDAR'))
 evaluation = dict(
-    interval=4,
+    interval=1,
     pipeline=[
         dict(
             type='LoadPointsFromFile',

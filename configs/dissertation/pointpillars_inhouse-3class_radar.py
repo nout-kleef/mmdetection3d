@@ -5,9 +5,9 @@ _base_ = [
     '../_base_/default_runtime.py'
 ]
 
-point_cloud_range = [0, -39.68, -2, 69.12, 39.68, 2]
+point_cloud_range = [0, -39.68, -2.75, 69.12, 39.68, 1.25]
 # dataset settings
-data_root = 'data/inhouse_radar_only/kitti_format/'
+data_root = 'data/inhouse_filtered_radar/kitti_format/'
 load_dim = 6
 use_dim = 6
 class_names = ['Pedestrian', 'Cyclist', 'Car']
