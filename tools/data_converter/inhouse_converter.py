@@ -5,6 +5,52 @@ import open3d as o3d
 from scipy.spatial.transform import Rotation as R
 
 
+def get_matrix_from_ext(ext):
+    rot = R.from_euler('ZYX', ext[3:], degrees=True)
+    rot_m = rot.as_matrix()
+    x, y, z = ext[:3]
+    tr = np.eye(4)
+    tr[:3,:3] = rot_m
+    tr[:3, 3] = np.array([x, y, z]).T
+    return tr
+
+def get_date_key(ts):
+    return '0118' if ts < 1643000000000 else '0126'
+    
+ext_params = {
+    '0118': {
+        'lidar': get_matrix_from_ext([0.00, 0.0, -0.3, -2.5, 0.0, 0]),
+        'radar': get_matrix_from_ext([0.06, -0.2, 0.7, -3.5, 2.0, 180]),
+    },
+    '0126': {
+        'lidar': get_matrix_from_ext([0.00, 0.0, 0.0, -1.0, 2.0, 0]),
+        'radar': get_matrix_from_ext([0.06, -0.2, 0.2, -1.0, 2.0, 180]),
+    }
+}
+
+
+class InhouseLabel2Kitti:
+    def __init__(self, inhouse_label, classname_dict):
+        self._class = classname_dict[inhouse_label[1]]
+        self._trunc = -1
+        self._occl = -1
+        self._alpha = -10
+        self._bbox = [-1, -1, -1, -1]
+        self._length = inhouse_label[5]
+        self._width = inhouse_label[6]
+        self._height = inhouse_label[7]
+        self._x = inhouse_label[2]
+        self._y = inhouse_label[3]
+        self._z = inhouse_label[4] - self._height / 2.0
+        self._roty = inhouse_label[9]
+
+    def __repr__(self) -> str:
+        return f'{self._class} {self._trunc} {self._occl} {self._alpha} '\
+            f'{self._bbox[0]} {self._bbox[1]} {self._bbox[2]} {self._bbox[3]} '\
+            f'{self._height:.2f} {self._width:.2f} {self._length:.2f} '\
+            f'{self._x:.2f} {self._y:.2f} {self._z:.2f} '\
+            f'{self._roty:.2f}'
+
 class Inhouse2KITTI(object):
     """Inhouse to KITTI converter.
 
@@ -36,10 +82,6 @@ class Inhouse2KITTI(object):
             3.0: 'Car',
             4.0: 'Truck'
         }
-
-        # update extrinsic parameters
-        self.lidar_transform = self.get_matrix_from_ext([0, 0, 0, -1, 2, 0])
-        self.radar_transform = self.get_matrix_from_ext([0.06, -0.2, 0.2, -1, 2, 180])
 
         self.load_dir = load_dir
         self.save_dir = save_dir
@@ -86,9 +128,8 @@ class Inhouse2KITTI(object):
         self.save_calib(ts)
         self.save_lidar(ts)
         self.save_radar(ts)
-        self.save_radar_label(ts)
-        if not self.test_mode:
-            self.save_label(ts)
+        self.save_radar_label(ts)  # bboxes without nearby radar points filtered out
+        self.save_label(ts)
 
     def __len__(self):
         return len(self.timestamps)
@@ -117,7 +158,8 @@ class Inhouse2KITTI(object):
         radar_points_xyz = np.column_stack((radar_data['x'], radar_data['y'], radar_data['z']))
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(radar_points_xyz)
-        pcd.transform(self.radar_transform)
+        collection_date = get_date_key(int(ts))
+        pcd.transform(ext_params[collection_date]['radar'])
         # save transformed pointcloud
         radar_points_aux = np.column_stack((radar_data['fSpeed'], radar_data['fPower'], radar_data['fRCS']))
         radar_data = np.column_stack((pcd.points, radar_points_aux))
@@ -128,7 +170,8 @@ class Inhouse2KITTI(object):
         pcd_file = os.path.join(self.lidar_path, f'{ts}.pcd')
         pcd_data = o3d.io.read_point_cloud(pcd_file)
         # transform to ground-truth coordinate system
-        pcd_data.transform(self.lidar_transform)
+        collection_date = get_date_key(int(ts))
+        pcd_data.transform(ext_params[collection_date]['lidar'])
         pc_path = os.path.join(self.lidar_save_dir, f'{ts}.bin')
         intensity = np.ones((len(pcd_data.points), ))
         point_cloud = np.column_stack((pcd_data.points, intensity))
@@ -138,6 +181,7 @@ class Inhouse2KITTI(object):
         """Parse and save the label data in txt format.
         The relation between inhouse and kitti coordinates is noteworthy:
         1. l,w,h (inhouse) --> h,w,l (kitti)
+        2. bbox origin at volumetric center (inhouse) -> bottom center (kitti)
         """
         label_load_path = os.path.join(self.gt_path, f'{ts}.csv')
         label_save_path = os.path.join(self.label_save_dir, f'{ts}.txt')
@@ -159,10 +203,8 @@ class Inhouse2KITTI(object):
             raise
         with open(label_save_path, 'w') as fp:
             for label in labels:
-                fp.write(f'{self.inhouse_to_kitti_class_map[label[1]]} -1 -1 -10 -1 -1 -1 -1 '\
-                    f'{label[7]:.2f} {label[6]:.2f} {label[5]:.2f} '\
-                    f'{label[2]:.2f} {label[3]:.2f} {label[4]:.2f} '\
-                    f'{label[9]:.2f}\n')
+                kitti_label = InhouseLabel2Kitti(label, self.inhouse_to_kitti_class_map)
+                fp.write(f'{kitti_label}\n')
 
     def save_radar_label(self, ts):
         """Parse and save the label data in txt format.
@@ -221,20 +263,11 @@ class Inhouse2KITTI(object):
             self.calib_save_dir,
             self.lidar_save_dir,
             self.radar_save_dir,
+            self.label_save_dir,
+            self.radar_gt_save_dir
         ]
         for d in dir_list:
             mmcv.mkdir_or_exist(d)
-        if not self.test_mode:
-            mmcv.mkdir_or_exist(self.label_save_dir)
-
-    def get_matrix_from_ext(self, ext):
-        rot = R.from_euler('ZYX', ext[3:], degrees=True)
-        rot_m = rot.as_matrix()
-        x, y, z = ext[:3]
-        tr = np.eye(4)
-        tr[:3,:3] = rot_m
-        tr[:3, 3] = np.array([x, y, z]).T
-        return tr
 
     def cart_to_homo(self, mat):
         """Convert transformation matrix in Cartesian coordinates to

@@ -19,9 +19,30 @@ GT_DTYPE = dtype=[
     ('x', 'f4'), ('y', 'f4'), ('z', 'f4'),
     ('yaw', 'f4')
 ]
-LIDAR_EXT = [0, 0, -0.3, -2.5, 0, 0]
-RADAR_EXT = [0.06, -0.2, 0.7, -3.5, 2, 180]
 VSCALE = 0.07
+
+def get_matrix_from_ext(ext):
+    rot = R.from_euler('ZYX', ext[3:], degrees=True)
+    rot_m = rot.as_matrix()
+    x, y, z = ext[:3]
+    tr = np.eye(4)
+    tr[:3,:3] = rot_m
+    tr[:3, 3] = np.array([x, y, z]).T
+    return tr
+
+def get_date_key(ts):
+    return '0118' if ts < 1643000000000 else '0126'
+    
+ext_params = {
+    '0118': {
+        'lidar': get_matrix_from_ext([0.00, 0.0, -0.3, -2.5, 0.0, 0]),
+        'radar': get_matrix_from_ext([0.06, -0.2, 0.7, -3.5, 2.0, 180]),
+    },
+    '0126': {
+        'lidar': get_matrix_from_ext([0.00, 0.0, 0.0, -1.0, 2.0, 0]),
+        'radar': get_matrix_from_ext([0.06, -0.2, 0.2, -1.0, 2.0, 180]),
+    }
+}
 
 def create_lines(points, vs):
     def produce_line_extension(p, v):
@@ -101,21 +122,10 @@ def main():
         else:
             os.system("rm -r " + args.save_dir)
             os.mkdir(args.save_dir)
-
-    lidar_tr = get_matrix_from_ext(LIDAR_EXT)
-    radar_tr = get_matrix_from_ext(RADAR_EXT)
     
     for ts in args.timestamps:
-        visualise(args, ts, lidar_tr, radar_tr)
-
-def get_matrix_from_ext(ext):
-    rot = R.from_euler('ZYX', ext[3:], degrees=True)
-    rot_m = rot.as_matrix()
-    x, y, z = ext[:3]
-    tr = np.eye(4)
-    tr[:3,:3] = rot_m
-    tr[:3, 3] = np.array([x, y, z]).T
-    return tr
+        collection_date = get_date_key(ts)
+        visualise(args, ts, ext_params[collection_date]['lidar'], ext_params[collection_date]['radar'])
 
 def get_rotation(yaw):
     angle = np.array([0, 0, yaw])
