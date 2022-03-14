@@ -4,7 +4,7 @@ import shutil
 import os
 from pathlib import Path
 import lxml.etree
-import read_raw, extract_gt, pcl_sync, copy_lidar, partition, vis_pcl, filter_radar_label
+import read_raw, extract_gt, pcl_sync, copy_lidar, partition, partition_old, vis_pcl, filter_radar_label
 
 def _purge(paths):
     for path in paths:
@@ -120,7 +120,7 @@ def main():
 
     print('*** STEP 6 - partition.py ***')
     if not args.skip_partition: 
-        partition.partition(args.save_dir)
+        partition_old.partition(args.save_dir)
         _purge(_raw_paths)  # remove unsynced gt and radar data to save storage
     else: print('(skipped)')
     # print('*** STEP 6 - vis_pcl.py ***')
