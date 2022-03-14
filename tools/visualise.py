@@ -35,12 +35,12 @@ def get_date_key(ts):
     
 ext_params = {
     '0118': {
-        'lidar': get_matrix_from_ext([0.00, 0.0, -0.3, -2.5, 0.0, 0]),
-        'radar': get_matrix_from_ext([0.06, -0.2, 0.7, -3.5, 2.0, 180]),
+        'lidar': get_matrix_from_ext([0.00, 0.0, -0.3, -2.5, 0, 0]),
+        'radar': get_matrix_from_ext([0.06, -0.2, 0.7, -3.5, 2, 180]),
     },
     '0126': {
-        'lidar': get_matrix_from_ext([0.00, 0.0, 0.0, -1.0, 2.0, 0]),
-        'radar': get_matrix_from_ext([0.06, -0.2, 0.2, -1.0, 2.0, 180]),
+        'lidar': get_matrix_from_ext([0.00, 0.0, -0.3, -2.5, 0, 0]),    # NB: identical to 0118
+        'radar': get_matrix_from_ext([0.06, -0.2, 0.7, -3.5, 2, 180]),  # NB: identical to 0118
     }
 }
 
