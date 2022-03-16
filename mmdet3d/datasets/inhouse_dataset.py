@@ -73,7 +73,7 @@ class InhouseDataset(KittiDataset):
             test_mode=test_mode,
             pcd_limit_range=pcd_limit_range)
 
-        self.CLASSES = ('car', 'cyclist', 'pedestrian', 'truck')
+        self.CLASSES = ('Car', 'Cyclist', 'Pedestrian', 'Truck')
 
         # to load a subset, just set the load_interval in the dataset config
         self.data_infos = self.data_infos[::load_interval]
