@@ -4,6 +4,18 @@ __resume_from = None
 __max_epochs = 120
 __eval_interval = 4
 __batch_size = 12
+__min_points = {
+    'Car': 5,
+    'Cyclist': 10,
+    'Pedestrian': 10,
+    'Truck': 5,
+}
+__samples = {
+    'Car': 15,
+    'Cyclist': 10,
+    'Pedestrian': 10,
+    'Truck': 6,
+}
 
 # hyperparams
 __z = [-3, 1]
@@ -113,9 +125,9 @@ db_sampler = dict(
     rate=1.0,
     prepare=dict(
         filter_by_difficulty=[-1],
-        filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10, Truck=5)),
+        filter_by_min_points=dict(Car=__min_points['Car'], Pedestrian=__min_points['Pedestrian'], Cyclist=__min_points['Cyclist'], Truck=__min_points['Truck'])),
     classes=__classes,
-    sample_groups=dict(Car=15, Pedestrian=10, Cyclist=10, Truck=6))
+    sample_groups=dict(Car=__samples['Car'], Pedestrian=__samples['Pedestrian'], Cyclist=__samples['Cyclist'], Truck=__samples['Truck']))
 file_client_args = dict(backend='disk')
 train_pipeline = [
     dict(type='LoadPointsFromFile', coord_type='LIDAR', load_dim=__load_dim, use_dim=__use_dim),
@@ -128,9 +140,9 @@ train_pipeline = [
             rate=1.0,
             prepare=dict(
                 filter_by_difficulty=[-1],
-                filter_by_min_points=dict(Car=5, Pedestrian=10, Cyclist=10)),
+                filter_by_min_points=dict(Car=__min_points['Car'], Pedestrian=__min_points['Pedestrian'], Cyclist=__min_points['Cyclist'])),
             classes=__classes,
-            sample_groups=dict(Car=15, Pedestrian=10, Cyclist=10))),
+            sample_groups=dict(Car=__samples['Car'], Pedestrian=__samples['Pedestrian'], Cyclist=__samples['Cyclist']))),
     dict(
         type='ObjectNoise',
         num_try=100,
@@ -218,7 +230,7 @@ train_dataset = dict(
                 prepare=dict(
                     filter_by_difficulty=[-1],
                     filter_by_min_points=dict(
-                        Car=5, Pedestrian=10, Cyclist=10, Truck=5)),
+                        Car=__min_points['Car'], Pedestrian=__min_points['Pedestrian'], Cyclist=__min_points['Cyclist'], Truck=__min_points['Truck'])),
                 classes=__classes,
                 sample_groups=dict(Car=12, Pedestrian=6, Cyclist=6, Truck=6))),
         dict(
@@ -278,9 +290,9 @@ data = dict(
                     prepare=dict(
                         filter_by_difficulty=[-1],
                         filter_by_min_points=dict(
-                            Car=5, Pedestrian=10, Cyclist=10)),
+                            Car=__min_points['Car'], Pedestrian=__min_points['Pedestrian'], Cyclist=__min_points['Cyclist'])),
                     classes=__classes,
-                    sample_groups=dict(Car=15, Pedestrian=10, Cyclist=10))),
+                    sample_groups=dict(Car=__samples['Car'], Pedestrian=__samples['Pedestrian'], Cyclist=__samples['Cyclist']))),
             dict(
                 type='ObjectNoise',
                 num_try=100,
