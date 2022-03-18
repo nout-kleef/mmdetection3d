@@ -16,6 +16,12 @@ __samples = {
     'Pedestrian': 10,
     'Truck': 6,
 }
+__samples2 = {
+    'Car': 12,
+    'Cyclist': 6,
+    'Pedestrian': 6,
+    'Truck': 6,
+}
 
 # hyperparams
 __z = [-3, 1]
@@ -232,7 +238,7 @@ train_dataset = dict(
                     filter_by_min_points=dict(
                         Car=__min_points['Car'], Pedestrian=__min_points['Pedestrian'], Cyclist=__min_points['Cyclist'], Truck=__min_points['Truck'])),
                 classes=__classes,
-                sample_groups=dict(Car=12, Pedestrian=6, Cyclist=6, Truck=6))),
+                sample_groups=dict(Car=__samples2['Car'], Pedestrian=__samples2['Pedestrian'], Cyclist=__samples2['Cyclist'], Truck=__samples2['Truck']))),
         dict(
             type='ObjectNoise',
             num_try=100,
