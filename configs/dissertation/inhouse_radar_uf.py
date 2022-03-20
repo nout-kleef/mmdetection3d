@@ -1,16 +1,5 @@
-"""
-Parameter experimentation on micro set:
-min_points, samples,    ep8     ep16    ep24    ep32
-0           0,0         0.45    0.95    4.36    12.14
-1           15,0        0.14    0.47    12.90   11.50
-def         15,0        0.10    2.88    9.80    13.23
-def         def
-1           0,0
-1           5,0
-"""
-
 # training setup
-__data_root = '/mnt/12T/nout/inhouse_filtered_radar/kitti_format/'
+__data_root = '/mnt/12T/nout/inhouse_unfiltered_radar/kitti_format/'
 __resume_from = None
 __max_epochs = 120
 __eval_interval = 4
