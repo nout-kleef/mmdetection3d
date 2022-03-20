@@ -17,15 +17,15 @@ __eval_interval = 4
 __batch_size = 11
 __min_points = {
     'Car': 5,
-    'Cyclist': 5,
-    'Pedestrian': 5,
+    'Cyclist': 10,
+    'Pedestrian': 10,
     'Truck': 5,
 }
 __samples = {
-    'Car': 0,
-    'Cyclist': 0,
-    'Pedestrian': 0,
-    'Truck': 0,
+    'Car': 15,
+    'Cyclist': 10,
+    'Pedestrian': 10,
+    'Truck': 6,
 }
 __samples2 = __samples
 
