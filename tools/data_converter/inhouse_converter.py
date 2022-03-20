@@ -3,6 +3,7 @@ import numpy as np
 import os
 import open3d as o3d
 from scipy.spatial.transform import Rotation as R
+from pyntcloud import PyntCloud
 
 
 def get_matrix_from_ext(ext):
@@ -173,7 +174,7 @@ class Inhouse2KITTI(object):
         collection_date = get_date_key(int(ts))
         pcd_data.transform(ext_params[collection_date]['lidar'])
         pc_path = os.path.join(self.lidar_save_dir, f'{ts}.bin')
-        intensity = np.ones((len(pcd_data.points), ))
+        intensity = self._get_intensity(pcd_file)
         point_cloud = np.column_stack((pcd_data.points, intensity))
         point_cloud.astype(np.float32).tofile(pc_path)
 
@@ -289,3 +290,7 @@ class Inhouse2KITTI(object):
         else:
             raise ValueError(mat.shape)
         return ret
+
+    def _get_intensity(self, path) -> np.ndarray:
+        pc = PyntCloud.from_file(path)
+        return np.array(pc.points['intensity'])
