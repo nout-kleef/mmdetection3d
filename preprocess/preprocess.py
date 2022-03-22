@@ -114,6 +114,7 @@ def main():
 
     print('*** STEP 5 - filter_radar_label.py ***')
     if not args.skip_label_filter: 
+        raise ValueError()
         filter_radar_label.filter_radar_label(args.save_dir)
     else: print('(skipped)')
 

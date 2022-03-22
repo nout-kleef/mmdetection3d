@@ -105,7 +105,7 @@ class Inhouse2KITTI(object):
         self.lidar_save_dir = os.path.join(self.save_dir, 'lidar')
         self.radar_save_dir = os.path.join(self.save_dir, 'radar')
         self.radar_gt_save_dir = os.path.join(self.save_dir, 'label_r')
-        for dir in [self.label_save_dir, self.calib_save_dir, self.lidar_save_dir, self.radar_save_dir, self.radar_gt_save_dir]:
+        for dir in [self.label_save_dir, self.calib_save_dir, self.lidar_save_dir, self.radar_save_dir]:
             if not os.path.exists(dir):
                 os.makedirs(dir)
 
@@ -129,7 +129,7 @@ class Inhouse2KITTI(object):
         self.save_calib(ts)
         self.save_lidar(ts)
         self.save_radar(ts)
-        self.save_radar_label(ts)  # bboxes without nearby radar points filtered out
+        # self.save_radar_label(ts)  # bboxes without nearby radar points filtered out
         self.save_label(ts)
 
     def __len__(self):
@@ -265,7 +265,7 @@ class Inhouse2KITTI(object):
             self.lidar_save_dir,
             self.radar_save_dir,
             self.label_save_dir,
-            self.radar_gt_save_dir
+            # self.radar_gt_save_dir
         ]
         for d in dir_list:
             mmcv.mkdir_or_exist(d)
