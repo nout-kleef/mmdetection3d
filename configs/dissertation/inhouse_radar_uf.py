@@ -1,9 +1,9 @@
 # training setup
-__data_root = '/mnt/12T/nout/inhouse_unfiltered_radar/kitti_format/'
+__data_root = '/mnt/12T/nout/V3/inhouse_unfiltered_radar/kitti_format/'
 __resume_from = None
 __max_epochs = 120
 __eval_interval = 4
-__batch_size = 11
+__batch_size = 12
 __min_points = {
     'Car': 5,
     'Cyclist': 10,
