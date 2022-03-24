@@ -161,6 +161,10 @@ class Inhouse2KITTI(object):
         pcd.points = o3d.utility.Vector3dVector(radar_points_xyz)
         collection_date = get_date_key(int(ts))
         pcd.transform(ext_params[collection_date]['radar'])
+        # flatten spatial dimensions to artificially create 3D radar data
+        points_flattened = np.array(pcd.points)
+        points_flattened[:,2] = 0.2
+        pcd.points = o3d.utility.Vector3dVector(points_flattened)
         # save transformed pointcloud
         radar_points_aux = np.column_stack((radar_data['fSpeed'], radar_data['fPower'], radar_data['fRCS']))
         radar_data = np.column_stack((pcd.points, radar_points_aux))
