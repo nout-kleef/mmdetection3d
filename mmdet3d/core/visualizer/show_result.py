@@ -3,6 +3,7 @@ import mmcv
 import numpy as np
 import trimesh
 from os import path as osp
+import open3d as o3d
 
 from .image_vis import (draw_camera_bbox3d_on_img, draw_depth_bbox3d_on_img,
                         draw_lidar_bbox3d_on_img)
@@ -123,6 +124,7 @@ def show_result(points,
             vis.add_bboxes(bbox3d=gt_bboxes, bbox_color=(0, 0, 1))
         show_path = osp.join(result_path,
                              f'{filename}_online.png') if snapshot else None
+        print(f'SHOWING: {filename}')
         vis.show(show_path)
 
     if points is not None:
