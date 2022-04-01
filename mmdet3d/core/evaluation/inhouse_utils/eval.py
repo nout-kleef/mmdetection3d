@@ -157,7 +157,7 @@ def d3_box_overlap(boxes, qboxes, criterion=-1):
     return rinc
 
 
-@numba.jit(nopython=True)
+# @numba.jit(nopython=True)
 def compute_statistics_jit(overlaps,
                            gt_datas,
                            dt_datas,
@@ -173,9 +173,9 @@ def compute_statistics_jit(overlaps,
     det_size = dt_datas.shape[0]
     gt_size = gt_datas.shape[0]
     dt_scores = dt_datas[:, -1]
-    dt_alphas = dt_datas[:, 4]
-    gt_alphas = gt_datas[:, 4]
-    dt_bboxes = dt_datas[:, :4]
+    dt_alphas = dt_datas[:, 0]
+    gt_alphas = gt_datas[:, 0]
+    # dt_bboxes = dt_datas[:, :4]
     # gt_bboxes = gt_datas[:, :4]
 
     assigned_detection = [False] * det_size
@@ -249,19 +249,19 @@ def compute_statistics_jit(overlaps,
                      or ignored_det[i] == 1 or ignored_threshold[i])):
                 fp += 1
         nstuff = 0
-        if metric == 0:
-            overlaps_dt_dc = image_box_overlap(dt_bboxes, dc_bboxes, 0)
-            for i in range(dc_bboxes.shape[0]):
-                for j in range(det_size):
-                    if (assigned_detection[j]):
-                        continue
-                    if (ignored_det[j] == -1 or ignored_det[j] == 1):
-                        continue
-                    if (ignored_threshold[j]):
-                        continue
-                    if overlaps_dt_dc[j, i] > min_overlap:
-                        assigned_detection[j] = True
-                        nstuff += 1
+        # if metric == 0:
+        #     overlaps_dt_dc = image_box_overlap(dt_bboxes, dc_bboxes, 0)
+        #     for i in range(dc_bboxes.shape[0]):
+        #         for j in range(det_size):
+        #             if (assigned_detection[j]):
+        #                 continue
+        #             if (ignored_det[j] == -1 or ignored_det[j] == 1):
+        #                 continue
+        #             if (ignored_threshold[j]):
+        #                 continue
+        #             if overlaps_dt_dc[j, i] > min_overlap:
+        #                 assigned_detection[j] = True
+        #                 nstuff += 1
         fp -= nstuff
         if compute_aos:
             tmp = np.zeros((fp + delta_idx, ))
@@ -287,7 +287,7 @@ def get_split_parts(num, num_part):
         return [same_part] * num_part + [remain_num]
 
 
-@numba.jit(nopython=True)
+# @numba.jit(nopython=True)
 def fused_compute_statistics(overlaps,
                              pr,
                              gt_nums,
