@@ -482,7 +482,7 @@ class InhouseDataset(KittiDataset):
             if 'pts_bbox' in result.keys():
                 result = result['pts_bbox']
             data_info = self.data_infos[i]
-            pts_path = data_info['lidar_pc']['path']
+            pts_path = data_info['pts_pc']['path']
             file_name = osp.split(pts_path)[-1].split('.')[0]
             points, img_metas, img = self._extract_data(
                 i, pipeline, ['points', 'img_metas', 'img'])
