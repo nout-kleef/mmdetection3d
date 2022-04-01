@@ -46,8 +46,6 @@ class InhouseDataset(KittiDataset):
         pcd_limit_range (list): The range of point cloud used to filter
             invalid predicted boxes. Default: [-85, -85, -5, 85, 85, 5].
     """
-    # hardcoded, used for visualisation only
-    __RAW_ROOT = '/mnt/12T/public/inhouse/'
 
     def __init__(self,
                  data_root,
@@ -76,27 +74,11 @@ class InhouseDataset(KittiDataset):
             pcd_limit_range=pcd_limit_range)
 
         self.CLASSES = ('Car', 'Cyclist', 'Pedestrian', 'Truck')
-        self.__img_paths = self.__get_img_paths()
 
         # to load a subset, just set the load_interval in the dataset config
         self.data_infos = self.data_infos[::load_interval]
         if hasattr(self, 'flag'):
             self.flag = self.flag[::load_interval]
-
-    def __get_img_paths(self):
-        options = os.listdir(InhouseDataset.__RAW_ROOT)
-        img_paths = {}
-        for option in options:
-            path = os.path.join(InhouseDataset.__RAW_ROOT, option)
-            if os.path.isdir(path):
-                img_dir = os.path.join(path, 'input', 'image', 'B')
-                # index all images in this directory
-                imgs = os.listdir(img_dir)
-                for img in imgs:
-                    img_path = os.path.join(img_dir, img)
-                    ts = int(img[:-6])
-                    img_paths[ts] = img_path
-            
 
     def _get_pts_filename(self, info):
         return osp.join(self.data_root, info['pts_pc']['path'])
@@ -500,7 +482,7 @@ class InhouseDataset(KittiDataset):
             if 'pts_bbox' in result.keys():
                 result = result['pts_bbox']
             data_info = self.data_infos[i]
-            pts_path = data_info['pts_pc']['path']
+            pts_path = data_info['lidar_pc']['path']
             file_name = osp.split(pts_path)[-1].split('.')[0]
             points, img_metas, img = self._extract_data(
                 i, pipeline, ['points', 'img_metas', 'img'])
@@ -516,7 +498,6 @@ class InhouseDataset(KittiDataset):
                                                  Box3DMode.DEPTH)
             show_result(points, show_gt_bboxes, show_pred_bboxes, out_dir,
                         file_name, show)
-            
 
             # multi-modality visualization
             if self.modality['use_camera'] and 'lidar2img' in img_metas.keys():
