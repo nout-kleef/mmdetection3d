@@ -1,10 +1,12 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import argparse
+from copy import copy
 import json
 import numpy as np
 import seaborn as sns
 from collections import defaultdict
 from matplotlib import pyplot as plt
+from pathlib import Path
 
 
 def cal_train_time(log_dicts, args):
@@ -100,11 +102,12 @@ def plot_curve(log_dicts, args):
                     xs, ys, label=legend[i * num_metrics + j], linewidth=0.5)
             plt.legend()
             # axes
-            for ind, label in enumerate(plt.xticks()[1]):
-                if ind % 2 == 0:  # every 10th label is kept
-                    label.set_visible(True)
-                else:
-                    label.set_visible(False)
+            if len(xs) < 200:
+                for ind, label in enumerate(plt.xticks()[1]):
+                    if ind % 2 == 0:  # every 10th label is kept
+                        label.set_visible(True)
+                    else:
+                        label.set_visible(False)
             plt.ylim(bottom=0)
         if args.title is not None:
             plt.title(args.title)
@@ -191,6 +194,19 @@ def load_json_logs(json_logs):
                     log_dict[epoch][k].append(v)
     return log_dicts
 
+def get_dir(filename):
+    return str(Path(filename).parent)
+
+def merge(d: dict, key: int, val: dict) -> None:
+    if 'loss' not in val or len(val['loss']) == 0: return
+    curr_val = d[key]
+    if 'loss' not in curr_val:
+        d[key] = val
+    else:
+        curr_len = len(curr_val['loss'])
+        new_len = len(val['loss'])
+        if new_len > curr_len:
+            d[key] = val
 
 def main():
     args = parse_args()
@@ -201,7 +217,36 @@ def main():
 
     log_dicts = load_json_logs(json_logs)
 
-    eval(args.task)(log_dicts, args)
+    # merge from same directory
+    prev_was_comb = False
+    log_dicts_fixed = []
+    json_logs_fixed = []
+    for i in range(1, len(json_logs)):
+        prev, curr = json_logs[i - 1], json_logs[i]
+        prev_dir, curr_dir = get_dir(prev), get_dir(curr)
+        dict1, dict2 = log_dicts[i - 1], log_dicts[i]
+        if prev_dir != curr_dir:
+            if not prev_was_comb:
+                log_dicts_fixed.append(dict1)
+                json_logs_fixed.append(json_logs[i - 1])
+            prev_was_comb = False
+            continue
+        merged_dict = copy(dict1)
+        for ep, val in dict2.items():
+            if ep not in merged_dict:
+                merged_dict[ep] = val
+            else:
+                merge(merged_dict, ep, val)
+        log_dicts_fixed.append(merged_dict)
+        json_logs_fixed.append(json_logs[i - 1])
+        prev_was_comb = True
+    if not prev_was_comb:
+        log_dicts_fixed.append(log_dicts[-1])
+        json_logs_fixed.append(json_logs[-1])
+
+    args.json_logs = json_logs_fixed
+
+    eval(args.task)(log_dicts_fixed, args)
 
 
 if __name__ == '__main__':

@@ -1,29 +1,46 @@
 from dataclasses import dataclass
 import subprocess
 import os
+from typing import List
 
 @dataclass
 class Experiment:
     name: str
     path: str
-    file: str
+    files: List[str]
 
     @property
-    def full_path(self):
-        return os.path.join(self.path, self.file)
+    def paths(self):
+        return [os.path.join(self.path, f) for f in self.files]
 
 def val_plots(exp1: Experiment, exp2: Experiment, metric: str, title: str, out_file: str):
     subprocess.check_output([
         'python',
         'tools/analysis_tools/analyze_logs.py',
         'plot_curve',
-        exp1.full_path,
-        exp2.full_path,
+        *exp1.paths,
+        *exp2.paths,
         '--title', title,
         '--keys', metric,
         '--legend', exp1.name, exp2.name,
         '--mode', 'eval',
         '--interval', '4',
+        '--out', out_file
+    ])
+
+def train_loss(exp1: Experiment, exp2: Experiment, multiclass: bool, title: str, out_file: str):
+    metrics = [' loss_bbox', ' loss_cls'] if multiclass else ['']
+    legend = [f'{e.name}{m}' for m in metrics for e in [exp1, exp2]]
+    metrics = ['loss_bbox'] if not multiclass else ['loss_bbox', 'loss_cls']
+    subprocess.check_output([
+        'python',
+        'tools/analysis_tools/analyze_logs.py',
+        'plot_curve',
+        *exp1.paths,
+        *exp2.paths,
+        '--title', title,
+        '--keys', *metrics,
+        '--legend', *legend,
         '--out', out_file
     ])
 
@@ -42,34 +59,48 @@ def get_title(experiment_name: str, metric: str, diff_dist: bool) -> str:
         return f'{experiment_name} - {_class} ({_iou})'
 
 
-def main():
-    experiment_name = 'radar'
+def experiment(experiment_name: str, vary: str, e1: Experiment, e2: Experiment):
+    print(f'experiment: {experiment_name}')
     out_dir = f'/Users/nout/Documents/university/Dissertation/report/ug/images/plots/{experiment_name}'
-    metrics = [
-        'KITTI/Car_3D_close_loose', 
-        'KITTI/Car_3D_medium_loose',
-        'KITTI/Car_3D_far_loose',
-    ]
-    exp1 = Experiment(
-        name='3D', 
-        path='experiments/V3/radar_unfiltered', 
-        file='20220322_082149.log.json'
-    )
-    exp2 = Experiment(
-        name='2D', 
-        path='experiments/V3/radar_unfiltered_bev', 
-        file='20220324_215623.log.json'
-    )
+    assert vary in {'dist', 'class'}
+    DISTS = ['close', 'medium', 'far']
+    CLSSS = ['Car', 'Cyclist', 'Pedestrian']
+    IOUS = ['strict', 'loose', 'very_loose']
+    if vary == 'dist':
+        metrics = [f'KITTI/Car_3D_{d}_{iou}' for d in DISTS for iou in IOUS]
+    else:
+        metrics = [f'KITTI/{c}_3D_far_{iou}' for c in CLSSS for iou in IOUS]
+    try:
+        out_file = os.path.join(out_dir, 'train_loss.pdf')
+        title = f'{experiment_name} - train loss'
+        train_loss(e1, e2, False, title, out_file)
+    except subprocess.CalledProcessError as e:
+        print(e.output)
+        raise
     for metric in metrics:
         assert metric.startswith('KITTI/')
         _metric = metric[6:]
         title = get_title(experiment_name, _metric, diff_dist=True)
         out_file = os.path.join(out_dir, f'{_metric}.pdf')
         try:
-            val_plots(exp1, exp2, metric, title, out_file)
+            val_plots(e1, e2, metric, title, out_file)
         except subprocess.CalledProcessError as e:
             print(e.output)
             raise
+
+def main():
+    # experiment(
+    #     experiment_name='radar',
+    #     vary='dist',
+    #     e1=Experiment('3D', 'experiments/V3/radar_unfiltered', ['20220322_082149.log.json']),
+    #     e2=Experiment('2D', 'experiments/V3/radar_unfiltered_bev', ['20220324_215623.log.json']),
+    # )
+    experiment(
+        experiment_name='LiDAR and radar',
+        vary='dist',
+        e1=Experiment('LiDAR', 'experiments/gpu1/intensity', ['20220323_140835.log.json','20220325_121729.log.json']),
+        e2=Experiment('radar', 'experiments/V3/radar_unfiltered', ['20220322_082149.log.json']),
+    )
 
 if __name__ == '__main__':
     main()
