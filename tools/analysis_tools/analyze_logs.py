@@ -191,6 +191,9 @@ def load_json_logs(json_logs):
                 if epoch not in log_dict:
                     log_dict[epoch] = defaultdict(list)
                 for k, v in log.items():
+                    if k.startswith('KITTI/overall_3D'):
+                        # correct for Truck class not being used
+                        v = v * 4.0 / 3.0
                     log_dict[epoch][k].append(v)
     return log_dicts
 
