@@ -1,4 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+from copy import copy
 import gc
 import io as sysio
 import numba
@@ -44,6 +45,18 @@ def inside_range(l, classname, diff) -> bool:
     return l[0] >= lims[0, 0] and l[0] <= lims[0, 1] and \
         l[1] >= lims[1, 0] and l[1] <= lims[1, 1] and \
         l[2] >= lims[2, 0] and l[2] <= lims[2, 1]
+
+def inside_frustum(l) -> bool:
+    # adjust location to handle objects on boundary
+    _l = copy(l)
+    _l[0] += 1.0
+    if _l[1] < 0:
+        _l[1] += 0.3
+    else:
+        _l[1] += 0.3
+    r = np.sqrt(_l[0] * _l[0] + _l[1] * _l[1])
+    theta = np.arctan(_l[1] / _l[0])
+    return r <= 150.0 and theta <= np.pi / 3.0 and theta >= -np.pi / 3.0
 
 def clean_data(gt_anno, dt_anno, current_class, difficulty):
     dc_bboxes, ignored_gt, ignored_dt = [], [], []
