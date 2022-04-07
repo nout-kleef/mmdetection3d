@@ -9,6 +9,9 @@ from matplotlib import pyplot as plt
 from pathlib import Path
 
 
+FIG_SIZE = 4.5
+LINE_THICK = 2.5
+
 def cal_train_time(log_dicts, args):
     for i, log_dict in enumerate(log_dicts):
         print(f'{"-" * 5}Analyze train time of {args.json_logs[i]}{"-" * 5}')
@@ -35,7 +38,7 @@ def cal_train_time(log_dicts, args):
 def plot_curve(log_dicts, args):
     if args.backend is not None:
         plt.switch_backend(args.backend)
-    sns.set(rc={'figure.figsize':(7, 7)})
+    sns.set(rc={'figure.figsize':(FIG_SIZE, FIG_SIZE)})
     sns.set_style(args.style)
     # if legend is None, use {filename}_{key} as legend
     legend = args.legend
@@ -81,9 +84,9 @@ def plot_curve(log_dicts, args):
                     xs = xs[:-1]
 
                 ax = plt.gca()
-                ax.set_xticks(xs)
+                # ax.set_xticks(xs)
                 plt.xlabel('epoch')
-                plt.plot(xs, ys, label=legend[i * num_metrics + j])
+                plt.plot(xs, ys, label=legend[i * num_metrics + j], linewidth=LINE_THICK)
             else:
                 xs = []
                 ys = []
@@ -105,12 +108,15 @@ def plot_curve(log_dicts, args):
             # axes
             if len(xs) < 200:
                 # epochs as x-axis
-                for ind, label in enumerate(plt.xticks()[1]):
-                    if ind % 2 == 0:  # every 10th label is kept
-                        label.set_visible(True)
-                    else:
-                        label.set_visible(False)
+                # for ind, label in enumerate(plt.xticks()[1]):
+                #     if ind % 2 == 0:  # every 10th label is kept
+                #         label.set_visible(True)
+                #     else:
+                #         label.set_visible(False)
+                
                 plt.ylim(bottom=0, top=100)
+                # plt.grid(axis='y')
+                # plt.minorticks_off()
             else:
                 # steps as x-axis
                 plt.ylim(bottom=0)

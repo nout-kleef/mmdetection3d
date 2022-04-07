@@ -104,14 +104,14 @@ def main():
     experiment(
         experiment_name='radar',
         vary='dist',
-        e1=Experiment('3D+3D', 'experiments/V3/radar_unfiltered', ['20220322_082149.log.json']),
-        e2=Experiment('2D+3D', 'experiments/V3/radar_unfiltered_bev', ['20220324_215623.log.json']),
+        e1=Experiment('w/ vertical dimension', 'experiments/V3/radar_unfiltered', ['20220322_082149.log.json']),
+        e2=Experiment('w/o vertical dimension', 'experiments/V3/radar_unfiltered_bev', ['20220324_215623.log.json']),
     )
     experiment(
         experiment_name='LiDAR',
         vary='class',
-        e1=Experiment('3D+1D', 'experiments/gpu1/intensity', ['20220323_140835.log.json','20220325_121729.log.json']),
-        e2=Experiment('3D+0D', 'experiments/V2/lidar', ['20220316_162405.log.json']),
+        e1=Experiment('w/ intensity', 'experiments/gpu1/intensity', ['20220323_140835.log.json','20220325_121729.log.json']),
+        e2=Experiment('w/o intensity', 'experiments/V2/lidar', ['20220316_162405.log.json']),
     )
 
 if __name__ == '__main__':
