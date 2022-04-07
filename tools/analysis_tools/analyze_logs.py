@@ -80,7 +80,7 @@ def plot_curve(log_dicts, args):
                 ax = plt.gca()
                 ax.set_xticks(xs)
                 plt.xlabel('epoch')
-                plt.plot(xs, ys, label=legend[i * num_metrics + j], marker='o')
+                plt.plot(xs, ys, label=legend[i * num_metrics + j])
             else:
                 xs = []
                 ys = []
@@ -99,6 +99,13 @@ def plot_curve(log_dicts, args):
                 plt.plot(
                     xs, ys, label=legend[i * num_metrics + j], linewidth=0.5)
             plt.legend()
+            # axes
+            for ind, label in enumerate(plt.xticks()[1]):
+                if ind % 2 == 0:  # every 10th label is kept
+                    label.set_visible(True)
+                else:
+                    label.set_visible(False)
+            plt.ylim(bottom=0)
         if args.title is not None:
             plt.title(args.title)
     if args.out is None:
