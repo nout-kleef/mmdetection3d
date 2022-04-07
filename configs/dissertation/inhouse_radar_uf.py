@@ -19,7 +19,7 @@ __samples = {
 __samples2 = __samples
 
 # hyperparams
-__z = [-6, 4]
+__z = [-6, 12.5]
 __load_dim = 6
 __use_dim = 6
 __classes = ['Car', 'Cyclist', 'Pedestrian', 'Truck']

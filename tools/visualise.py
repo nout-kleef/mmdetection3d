@@ -31,7 +31,7 @@ def get_matrix_from_ext(ext):
     return tr
 
 def get_date_key(ts):
-    return '0118' if int(ts) < 1643000000000 else '0126'
+    return '0118' if ts < 1643000000000 else '0126'
     
 ext_params = {
     '0118': {

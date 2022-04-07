@@ -1,4 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+from copy import copy
 import gc
 import io as sysio
 import numba
@@ -44,6 +45,18 @@ def inside_range(l, classname, diff) -> bool:
     return l[0] >= lims[0, 0] and l[0] <= lims[0, 1] and \
         l[1] >= lims[1, 0] and l[1] <= lims[1, 1] and \
         l[2] >= lims[2, 0] and l[2] <= lims[2, 1]
+
+def inside_frustum(l) -> bool:
+    # adjust location to handle objects on boundary
+    _l = copy(l)
+    _l[0] += 1.0
+    if _l[1] < 0:
+        _l[1] += 0.3
+    else:
+        _l[1] += 0.3
+    r = np.sqrt(_l[0] * _l[0] + _l[1] * _l[1])
+    theta = np.arctan(_l[1] / _l[0])
+    return r <= 150.0 and theta <= np.pi / 3.0 and theta >= -np.pi / 3.0
 
 def clean_data(gt_anno, dt_anno, current_class, difficulty):
     dc_bboxes, ignored_gt, ignored_dt = [], [], []
@@ -157,7 +170,7 @@ def d3_box_overlap(boxes, qboxes, criterion=-1):
     return rinc
 
 
-@numba.jit(nopython=True)
+# @numba.jit(nopython=True)
 def compute_statistics_jit(overlaps,
                            gt_datas,
                            dt_datas,
@@ -173,9 +186,9 @@ def compute_statistics_jit(overlaps,
     det_size = dt_datas.shape[0]
     gt_size = gt_datas.shape[0]
     dt_scores = dt_datas[:, -1]
-    dt_alphas = dt_datas[:, 4]
-    gt_alphas = gt_datas[:, 4]
-    dt_bboxes = dt_datas[:, :4]
+    dt_alphas = dt_datas[:, 0]
+    gt_alphas = gt_datas[:, 0]
+    # dt_bboxes = dt_datas[:, :4]
     # gt_bboxes = gt_datas[:, :4]
 
     assigned_detection = [False] * det_size
@@ -249,19 +262,19 @@ def compute_statistics_jit(overlaps,
                      or ignored_det[i] == 1 or ignored_threshold[i])):
                 fp += 1
         nstuff = 0
-        if metric == 0:
-            overlaps_dt_dc = image_box_overlap(dt_bboxes, dc_bboxes, 0)
-            for i in range(dc_bboxes.shape[0]):
-                for j in range(det_size):
-                    if (assigned_detection[j]):
-                        continue
-                    if (ignored_det[j] == -1 or ignored_det[j] == 1):
-                        continue
-                    if (ignored_threshold[j]):
-                        continue
-                    if overlaps_dt_dc[j, i] > min_overlap:
-                        assigned_detection[j] = True
-                        nstuff += 1
+        # if metric == 0:
+        #     overlaps_dt_dc = image_box_overlap(dt_bboxes, dc_bboxes, 0)
+        #     for i in range(dc_bboxes.shape[0]):
+        #         for j in range(det_size):
+        #             if (assigned_detection[j]):
+        #                 continue
+        #             if (ignored_det[j] == -1 or ignored_det[j] == 1):
+        #                 continue
+        #             if (ignored_threshold[j]):
+        #                 continue
+        #             if overlaps_dt_dc[j, i] > min_overlap:
+        #                 assigned_detection[j] = True
+        #                 nstuff += 1
         fp -= nstuff
         if compute_aos:
             tmp = np.zeros((fp + delta_idx, ))
@@ -287,7 +300,7 @@ def get_split_parts(num, num_part):
         return [same_part] * num_part + [remain_num]
 
 
-@numba.jit(nopython=True)
+# @numba.jit(nopython=True)
 def fused_compute_statistics(overlaps,
                              pr,
                              gt_nums,
