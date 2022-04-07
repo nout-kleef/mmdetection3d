@@ -35,6 +35,7 @@ def cal_train_time(log_dicts, args):
 def plot_curve(log_dicts, args):
     if args.backend is not None:
         plt.switch_backend(args.backend)
+    sns.set(rc={'figure.figsize':(7, 7)})
     sns.set_style(args.style)
     # if legend is None, use {filename}_{key} as legend
     legend = args.legend
@@ -103,14 +104,20 @@ def plot_curve(log_dicts, args):
             plt.legend()
             # axes
             if len(xs) < 200:
+                # epochs as x-axis
                 for ind, label in enumerate(plt.xticks()[1]):
                     if ind % 2 == 0:  # every 10th label is kept
                         label.set_visible(True)
                     else:
                         label.set_visible(False)
-            plt.ylim(bottom=0)
+                plt.ylim(bottom=0, top=100)
+            else:
+                # steps as x-axis
+                plt.ylim(bottom=0)
         if args.title is not None:
             plt.title(args.title)
+    
+    plt.tight_layout()
     if args.out is None:
         plt.show()
     else:

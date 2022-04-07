@@ -25,7 +25,8 @@ def val_plots(exp1: Experiment, exp2: Experiment, metric: str, title: str, out_f
         '--legend', exp1.name, exp2.name,
         '--mode', 'eval',
         '--interval', '4',
-        '--out', out_file
+        '--out', out_file,
+        '--style', 'whitegrid'
     ])
 
 def train_loss(exp1: Experiment, exp2: Experiment, multiclass: bool, title: str, out_file: str):
@@ -41,7 +42,8 @@ def train_loss(exp1: Experiment, exp2: Experiment, multiclass: bool, title: str,
         '--title', title,
         '--keys', *metrics,
         '--legend', *legend,
-        '--out', out_file
+        '--out', out_file,
+        '--style', 'whitegrid'
     ])
 
 def get_title(experiment_name: str, metric: str, diff_dist: bool) -> str:
@@ -49,8 +51,12 @@ def get_title(experiment_name: str, metric: str, diff_dist: bool) -> str:
     assert parts[1] == '3D'
     
     _class = parts[0].lower()
+    if _class == 'overall':
+        _class = 'mAP'
+    else:
+        _class = '$\\mathregular{AP_{' + _class + '}}$'
     _dist = parts[2]
-    _iou = '_'.join(parts[3:])
+    _iou = ' '.join(parts[3:])
 
     if diff_dist:
         return f'{experiment_name} - {_class}, {_dist} ({_iou})'
@@ -64,7 +70,7 @@ def experiment(experiment_name: str, vary: str, e1: Experiment, e2: Experiment):
     out_dir = f'/Users/nout/Documents/university/Dissertation/report/ug/images/plots/{experiment_name}'
     assert vary in {'dist', 'class'}
     DISTS = ['close', 'medium', 'far']
-    CLSSS = ['Car', 'Cyclist', 'Pedestrian']
+    CLSSS = ['overall', 'Car', 'Cyclist', 'Pedestrian']
     IOUS = ['strict', 'loose', 'very_loose']
     if vary == 'dist':
         metrics = [f'KITTI/Car_3D_{d}_{iou}' for d in DISTS for iou in IOUS]
@@ -89,17 +95,23 @@ def experiment(experiment_name: str, vary: str, e1: Experiment, e2: Experiment):
             raise
 
 def main():
-    # experiment(
-    #     experiment_name='radar',
-    #     vary='dist',
-    #     e1=Experiment('3D', 'experiments/V3/radar_unfiltered', ['20220322_082149.log.json']),
-    #     e2=Experiment('2D', 'experiments/V3/radar_unfiltered_bev', ['20220324_215623.log.json']),
-    # )
     experiment(
         experiment_name='LiDAR and radar',
         vary='dist',
         e1=Experiment('LiDAR', 'experiments/gpu1/intensity', ['20220323_140835.log.json','20220325_121729.log.json']),
         e2=Experiment('radar', 'experiments/V3/radar_unfiltered', ['20220322_082149.log.json']),
+    )
+    experiment(
+        experiment_name='radar',
+        vary='dist',
+        e1=Experiment('3D+3D', 'experiments/V3/radar_unfiltered', ['20220322_082149.log.json']),
+        e2=Experiment('2D+3D', 'experiments/V3/radar_unfiltered_bev', ['20220324_215623.log.json']),
+    )
+    experiment(
+        experiment_name='LiDAR',
+        vary='class',
+        e1=Experiment('3D+1D', 'experiments/gpu1/intensity', ['20220323_140835.log.json','20220325_121729.log.json']),
+        e2=Experiment('3D+0D', 'experiments/V2/lidar', ['20220316_162405.log.json']),
     )
 
 if __name__ == '__main__':
