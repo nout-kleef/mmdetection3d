@@ -2,7 +2,7 @@
 ARCHIVE="/mnt/12T/nout/archive"
 function test() {
     set -x
-    python tools/test.py "$ARCHIVE/$1/$2" "$ARCHIVE/$1/epoch_$3.pth" "--eval" "$4" 2>&1 | tee "$ARCHIVE/$1/test_result.txt"
+    python tools/test.py "$ARCHIVE/$1/$2" "$ARCHIVE/$1/epoch_$3.pth" "--eval" "$4" 2>&1 | tee "$ARCHIVE/$1/test_result_frustum.txt"
     set +x
 } 
 
