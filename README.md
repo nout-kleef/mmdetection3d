@@ -1,3 +1,56 @@
+# Fork instructions
+This fork contains the code used to produce the results in my undergraduate dissertation: Point-based 3D Object Detection for Autonomous Vehicles: On the Performance of LiDAR and 4D mmWave Radar.
+
+## Dataset conversion
+**important** The following converted datasets already exist [1]:
+- LiDAR, w/ intensity: `/mnt/12T/nout/V3/inhouse_unfiltered/kitti_format/`
+- LiDAR, w/o intensity: `/mnt/12T/nout/inhouse_filtered/kitti_format/`
+- radar, xyz: `/mnt/12T/nout/V3/inhouse_unfiltered_radar/kitti_format/`
+- radar, xy: `/mnt/12T/nout/V3/inhouse_unfiltered_radar_bev/kitti_format/`
+
+Converting SAIC Motor data into KITTI format consists of two steps, where `A`, `B`, `C` are paths to directories.
+1. Raw data --> SAIC Motor format: `python preprocess/preprocess.py A B --skip_label_filter`. See `scripts/preprocess.sh` for an example.
+2. SAIC Motor format --> KITTI format: `python tools/create_data.py inhouse --root-path B --out-dir C --workers 48 --extra-tag inhouse`. See `scripts/create_data.sh` for an example.
+
+**NB1**: step 1 also creates a train/val/test split in `B/kitti_format/ImageSets`. Hence, step 2 will only succeed if a) `B == C` OR b) the split files are copied to `C/kitti_format/ImageSets`.
+
+**NB2**: step 2 produces ground-truth samples from either LiDAR or radar data. In order to use radar data for these samples, `--version radar` must be added (LiDAR is the default).
+
+## Training
+SAIC Motor models can be trained using the following command, where `X` is the config file, and `Y` is a new directory to store the checkpoints and log files.
+`python tools/train.py X --work-dir Y`. See `scripts/train_lidar.sh` for an example.
+
+For each of the experiments listed above, a config file exists:
+- LiDAR, w/ intensity: `archive/gpu1/intensity/inhouse_lidar.py`
+- LiDAR, w/o intensity: `archive/V2/lidar/inhouse_lidar.py`
+- radar, xyz: `archive/V3/radar_unfiltered/inhouse_radar_uf.py`
+- radar, xy: `archive/V3/radar_unfiltered_bev/inhouse_radar_bev.py`
+
+## Evaluation
+**important** 
+Quantitative results in the report come from evaluating the models on the test set. The qualitative results are scenes from the validation set.
+For this, reason, the config files must be altered slightly when switching between these two actions:
+
+For config file `X` (see above):
+1. search `X` for `test=dict`, which gives one match around lines 340-350.
+2. Three lines below, replace the path for `ann_file`:
+IF qualitative: use `inhouse_infos_val.pkl`, ELSE: use `inhouse_infos_test.pkl` (default).
+
+### Quantitative
+Run the test script, where `X` is the config file, `Y` is a checkpoint file (use `epoch_120.pth` in the same directory): 
+`python tools/test.py X Y --eval inhouse`.
+
+### Qualitative
+After making the change described above, run the test script with visualisation enabled, where `Z` is the output directory for visualisation files:
+`python tools/test.py X Y --eval inhouse --eval-options show=True out_dir=Z`.
+Specifically, qualitative analyses shown in the report were produced using "LiDAR, w/o intensity" and "radar, xyz", on scenes `'1643180730900', '1643183307400', '1643182519400', '1643180515600'`.
+
+**NB3**: `show=True` will not work when run headless. I used TeamViewer for this.
+
+### Plots
+The plots shown in the report were produced using `scripts/produce_plots.py`.
+
+# Original MMDetection3D instructions
 <div align="center">
   <img src="resources/mmdet3d-logo.png" width="600"/>
   <div>&nbsp;</div>
