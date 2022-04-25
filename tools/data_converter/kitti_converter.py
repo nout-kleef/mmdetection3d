@@ -278,7 +278,7 @@ def create_inhouse_info_file(data_path,
     val_timestamps = _read_imageset_file(str(imageset_folder / 'val.txt'))
     test_timestamps = _read_imageset_file(str(imageset_folder / 'test.txt'))
 
-    calib = True
+    calib = False
     pose = False
 
     print('Generate info. this may take several minutes.')
