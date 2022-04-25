@@ -104,8 +104,7 @@ class Inhouse2KITTI(object):
         self.calib_save_dir = os.path.join(self.save_dir, 'calib')
         self.lidar_save_dir = os.path.join(self.save_dir, 'lidar')
         self.radar_save_dir = os.path.join(self.save_dir, 'radar')
-        self.radar_gt_save_dir = os.path.join(self.save_dir, 'label_r')
-        for dir in [self.label_save_dir, self.calib_save_dir, self.lidar_save_dir, self.radar_save_dir, self.radar_gt_save_dir]:
+        for dir in [self.label_save_dir, self.calib_save_dir, self.lidar_save_dir, self.radar_save_dir]:
             if not os.path.exists(dir):
                 os.makedirs(dir)
 
@@ -129,7 +128,6 @@ class Inhouse2KITTI(object):
         self.save_calib(ts)
         self.save_lidar(ts)
         self.save_radar(ts)
-        self.save_radar_label(ts)  # bboxes without nearby radar points filtered out
         self.save_label(ts)
 
     def __len__(self):
@@ -207,46 +205,6 @@ class Inhouse2KITTI(object):
                 kitti_label = InhouseLabel2Kitti(label, self.inhouse_to_kitti_class_map)
                 fp.write(f'{kitti_label}\n')
 
-    def save_radar_label(self, ts):
-        """Parse and save the label data in txt format.
-        The relation between inhouse and kitti coordinates is noteworthy:
-        1. l,w,h (inhouse) --> h,w,l (kitti)
-        """
-        label_load_path = os.path.join(self.radar_gt_path, f'{ts}.csv')
-        fsize = os.path.getsize(label_load_path)
-        if fsize == 0:
-            # skip processing empty file
-            # self.radar_gt_path, f'{ts}.csv'
-            save_path = os.path.join(self.radar_gt_save_dir, f'{ts}.txt')
-            gt = np.array([])
-            np.savetxt(save_path, gt, fmt='%s')
-            pass
-        else:
-            
-            label_save_path = os.path.join(self.radar_gt_save_dir, f'{ts}.txt')
-            try: 
-                labels = np.loadtxt(
-                    label_load_path,
-                    delimiter=' ',
-                    ndmin=1,
-                    dtype=[
-                        ('id', 'u1'), ('class', 'u1'),
-                        ('x', 'f4'), ('y', 'f4'), ('z', 'f4'),
-                        ('l', 'f4'), ('w', 'f4'), ('h', 'f4'),
-                        ('rx', 'f4'), ('ry', 'f4'), ('rz', 'f4'),
-                        ('unknown', 'u4')
-                    ]
-                )
-            except ValueError:
-                print(f'Failed to convert labels for timestamp {ts}. Path: {label_load_path}')
-                raise
-            with open(label_save_path, 'w') as fp:
-                for label in labels:
-                    fp.write(f'{self.inhouse_to_kitti_class_map[label[1]]} -1 -1 -10 -1 -1 -1 -1 '\
-                        f'{label[7]:.2f} {label[6]:.2f} {label[5]:.2f} '\
-                        f'{label[2]:.2f} {label[3]:.2f} {label[4]:.2f} '\
-                        f'{label[9]:.2f}\n')
-
     def save_calib(self, ts):
         """Parse and save the calibration data."""
         R0_rect = [f'{i:e}' for i in np.eye(3).flatten()]
@@ -265,7 +223,6 @@ class Inhouse2KITTI(object):
             self.lidar_save_dir,
             self.radar_save_dir,
             self.label_save_dir,
-            self.radar_gt_save_dir
         ]
         for d in dir_list:
             mmcv.mkdir_or_exist(d)

@@ -10,7 +10,7 @@ from typing import List
 
 def get_scenes(demo_root: Path, start: int, duration: int, validate: bool = True) -> List[int]:
     # val.txt contains all scenes for demo dataset
-    scenes_file = demo_root / 'data' / 'kitti_format' / 'ImageSets' / 'val.txt'
+    scenes_file = demo_root / 'data' / 'lidar' / 'kitti_format' / 'ImageSets' / 'val.txt'
     with open(scenes_file, 'r') as fh:
         scenes = fh.readlines()
         scenes_num = [int(s.rstrip()) for s in scenes]
@@ -37,7 +37,7 @@ def produce_imgs(demo_root: Path, section: List[int]) -> None:
     vis = o3d.visualization.Visualizer()
     vis.create_window(width=1920,height=1080)
     for scene in section:
-        lidar_file = demo_root / 'data' / 'kitti_format' / 'lidar' / f'{scene}.bin'
+        lidar_file = demo_root / 'data' / 'lidar' / 'kitti_format' / 'lidar' / f'{scene}.bin'
         out_file = out_dir / f'{scene}.png'
         produce_img(
             vis,
