@@ -1,8 +1,11 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+import os
 import mmcv
 import numpy as np
 import trimesh
+from pathlib import Path
 from os import path as osp
+import datetime
 
 from .image_vis import (draw_camera_bbox3d_on_img, draw_depth_bbox3d_on_img,
                         draw_lidar_bbox3d_on_img)
@@ -71,6 +74,13 @@ def _write_oriented_bbox(scene_bbox, out_filename):
 
     return
 
+__time = datetime.datetime.now().time()
+
+def dump_bboxes(bboxes, filename, pred):
+    subdir = 'pred' if pred else 'gt'
+    dir = Path('/mnt/12T/nout/demo/data/predictions') / str(__time) / subdir
+    os.makedirs(dir, exist_ok=True)
+    bboxes.tofile(dir / f'{filename}.txt')
 
 def show_result(points,
                 gt_bboxes,
@@ -98,10 +108,10 @@ def show_result(points,
     mmcv.mkdir_or_exist(result_path)
 
     if show:
-        if False or filename in {'1643180730900', '1643183307400', '1643182519400', '1643180515600'}:
+        if True:
             from .open3d_vis import Visualizer
 
-            vis = Visualizer(points)
+            # vis = Visualizer(points)
             if pred_bboxes is not None:
                 if pred_labels is None:
                     # fix order of dimensions
@@ -109,7 +119,8 @@ def show_result(points,
                     pred_bboxes[:,3] = h
                     pred_bboxes[:,4] = w
                     pred_bboxes[:,5] = l
-                    vis.add_bboxes(bbox3d=pred_bboxes)
+                    # vis.add_bboxes(bbox3d=pred_bboxes)
+                    dump_bboxes(pred_bboxes, filename, pred=True)
                 else:
                     palette = np.random.randint(
                         0, 255, size=(pred_labels.max() + 1, 3)) / 256
@@ -119,11 +130,11 @@ def show_result(points,
                         if labelDict.get(i) is None:
                             labelDict[i] = []
                         labelDict[i].append(pred_bboxes[j])
-                    for i in labelDict:
-                        vis.add_bboxes(
-                            bbox3d=np.array(labelDict[i]),
-                            bbox_color=palette[i],
-                            points_in_box_color=palette[i])
+                    # for i in labelDict:
+                        # vis.add_bboxes(
+                        #     bbox3d=np.array(labelDict[i]),
+                        #     bbox_color=palette[i],
+                        #     points_in_box_color=palette[i])
 
             if gt_bboxes is not None:
                 # fix order of dimensions
@@ -131,11 +142,12 @@ def show_result(points,
                 gt_bboxes[:,3] = h
                 gt_bboxes[:,4] = w
                 gt_bboxes[:,5] = l
-                vis.add_bboxes(bbox3d=gt_bboxes, bbox_color=(0, 0, 1))
+                # vis.add_bboxes(bbox3d=gt_bboxes, bbox_color=(0, 0, 1))
+                dump_bboxes(pred_bboxes, filename, pred=False)
             show_path = osp.join(result_path,
                                 f'{filename}_online.png') if snapshot else None
             print(f'SHOWING {filename}')
-            vis.show(show_path)
+            # vis.show(show_path)
         else:
             print('skip')
 
