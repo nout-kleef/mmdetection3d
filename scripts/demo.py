@@ -1,4 +1,5 @@
 import argparse
+import time
 import moviepy
 import numpy as np
 import open3d as o3d
@@ -6,10 +7,14 @@ import os
 from pathlib import Path
 import shutil
 from typing import List, Tuple
+from scipy.spatial.transform import Rotation as R
 
 RANGE = np.array([[0, 70.4], [-40, 40]])
+BLACK = [0, 0, 0]
 BLUE = [0, 0, 1]
 RED = [1, 0, 0]
+ORANGE = [1, 0.75, 0]
+PINK = [0.9, 0.6, 0.6]
 
 def clip_points(points: np.ndarray) -> np.ndarray:
     mask = (points[:, 0] >= RANGE[0, 0]) \
@@ -46,25 +51,69 @@ def get_geometries(demo_root: Path, scene: int) -> Tuple[
     return o3d.utility.Vector3dVector(lidar_points[:, :3]), \
         o3d.utility.Vector3dVector(radar_points[:, :3])
 
+def get_box(params: np.ndarray) -> o3d.geometry.OrientedBoundingBox:
+    def get_rotation(yaw):
+        angle = np.array([0, 0, yaw + (np.pi / 2.0)])
+        r = R.from_euler('XYZ', angle)
+        return r.as_matrix()
+
+    center = np.column_stack((params[1], -params[0], params[2]))
+    extent = params[3:6]  # h, w, l
+    angle = params[6]
+    # angle[0] = -angle[0]
+    rot_m = get_rotation(angle)
+    # rot_m = np.eye(3)
+    return o3d.geometry.OrientedBoundingBox(center.T, rot_m, extent.T)
+
+def show_boxes(
+    vis: o3d.visualization.Visualizer, 
+    boxes: List[o3d.geometry.OrientedBoundingBox],
+    new_boxes_path: Path,
+    colour: List[int],
+    remove_old: bool = True
+) -> List[o3d.geometry.OrientedBoundingBox]:
+    if remove_old:
+        for box in boxes:
+            vis.remove_geometry(box, reset_bounding_box=False)
+    new_boxes = []
+    boxes_params = np.fromfile(new_boxes_path, dtype=np.float32).reshape(-1, 7)
+    for i in range(boxes_params.shape[0]):
+        box = get_box(boxes_params[i])
+        new_boxes.append(box)
+        vis.add_geometry(box, reset_bounding_box=(not remove_old))
+    return new_boxes
+
 def produce_img(
     vis: o3d.visualization.Visualizer, 
     demo_root: Path, 
     scene: int, 
-    lidar: o3d.geometry.PointCloud,
-    radar: o3d.geometry.PointCloud
+    lidar_pcd: o3d.geometry.PointCloud,
+    radar_pcd: o3d.geometry.PointCloud,
+    gt_boxes: List[o3d.geometry.OrientedBoundingBox],
+    lidar_boxes: List[o3d.geometry.OrientedBoundingBox],
+    radar_boxes: List[o3d.geometry.OrientedBoundingBox]
 ) -> None:
     tmp_lidar, tmp_radar = get_geometries(demo_root, scene)
     # lidar
-    lidar.points = tmp_lidar
-    lidar.paint_uniform_color(BLUE)
-    vis.update_geometry(lidar)
+    lidar_pcd.points = tmp_lidar
+    lidar_pcd.paint_uniform_color(BLUE)
+    vis.update_geometry(lidar_pcd)
     # radar
-    radar.points = tmp_radar
-    radar.paint_uniform_color(RED)
-    vis.update_geometry(radar)
+    radar_pcd.points = tmp_radar
+    radar_pcd.paint_uniform_color(RED)
+    vis.update_geometry(radar_pcd)
+    # bboxes
+    gt_path = demo_root / 'data' / 'predictions' / 'lidar' / 'gt' / f'{scene}.txt'
+    lidar_pred_path = demo_root / 'data' / 'predictions' / 'lidar' / 'pred' / f'{scene}.txt'
+    radar_pred_path = demo_root / 'data' / 'predictions' / 'radar' / 'pred' / f'{scene}.txt'
+    gt_boxes = show_boxes(vis, gt_boxes, gt_path, BLACK)
+    # lidar_boxes = show_boxes(vis, lidar_boxes, lidar_pred_path, ORANGE)
+    # radar_boxes = show_boxes(vis, radar_boxes, radar_pred_path, PINK)
     # re-render
     vis.poll_events()
     vis.update_renderer()
+    time.sleep(0.03)
+    return gt_boxes, lidar_boxes, radar_boxes
 
 def produce_imgs(demo_root: Path, section: List[int]) -> None:
     out_dir = demo_root / 'out'
@@ -78,11 +127,23 @@ def produce_imgs(demo_root: Path, section: List[int]) -> None:
     tmp_lidar, tmp_radar = get_geometries(demo_root, section[0])
     lidar_pcd = create_pcd(tmp_lidar)
     radar_pcd = create_pcd(tmp_radar)
+    boxes_dir = demo_root / 'data' / 'predictions'
+    gt_boxes = show_boxes(vis, [], boxes_dir / 'lidar' / 'gt' / f'{section[0]}.txt', BLACK, remove_old=False)
+    # lidar_boxes = show_boxes(vis, [], boxes_dir / 'lidar' / 'pred' / f'{section[0]}.txt', ORANGE, remove_old=False)
+    # radar_boxes = show_boxes(vis, [], boxes_dir / 'radar' / 'pred' / f'{section[0]}.txt', PINK, remove_old=False)
     vis.add_geometry(lidar_pcd)
     vis.add_geometry(radar_pcd)
     vis.get_render_option().load_from_json(str(demo_root / 'render_options.json'))
     for scene in section:
-        produce_img(vis, demo_root, scene, lidar_pcd, radar_pcd)
+        gt_boxes, lidar_boxes, radar_boxes = produce_img(
+            vis, 
+            demo_root, 
+            scene, 
+            lidar_pcd, 
+            radar_pcd, 
+            gt_boxes=gt_boxes, 
+            lidar_boxes=[], 
+            radar_boxes=[])
 
 def make_demo(demo_root: Path, start: int, duration: int, fps: int) -> None:
     section = get_scenes(demo_root, start, duration)
