@@ -1,8 +1,9 @@
 import argparse
 import time
-import moviepy
+import moviepy.video.io.ImageSequenceClip
 import numpy as np
 import open3d as o3d
+import glob
 import os
 from pathlib import Path
 import shutil
@@ -138,6 +139,7 @@ def produce_imgs(demo_root: Path, section: List[int]) -> None:
     vis.add_geometry(lidar_pcd)
     vis.add_geometry(radar_pcd)
     vis.get_render_option().load_from_json(str(demo_root / 'render_options.json'))
+    time.sleep(5)
     for scene in section:
         gt_boxes, lidar_boxes, radar_boxes = produce_img(
             vis, 
@@ -149,9 +151,15 @@ def produce_imgs(demo_root: Path, section: List[int]) -> None:
             lidar_boxes=lidar_boxes, 
             radar_boxes=radar_boxes)
 
+def make_video(demo_root: Path, fps: int) -> None:
+    images = sorted(glob.glob(str(demo_root / 'out' / '*.png')))
+    clip = moviepy.video.io.ImageSequenceClip.ImageSequenceClip(images, fps=fps)
+    clip.write_videofile(str(demo_root / 'out' / 'demo.mp4'))
+
 def make_demo(demo_root: Path, start: int, duration: int, fps: int) -> None:
     section = get_scenes(demo_root, start, duration)
     produce_imgs(demo_root, section)
+    make_video(demo_root, fps)
 
 def main() -> None:
     parser = argparse.ArgumentParser()
