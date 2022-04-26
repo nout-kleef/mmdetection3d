@@ -21,7 +21,8 @@ def clip_points(points: np.ndarray) -> np.ndarray:
         & (points[:, 0] <= RANGE[0, 1]) \
         & (points[:, 1] >= RANGE[1, 0]) \
         & (points[:, 1] <= RANGE[1, 1])
-    return points[mask]
+    _points = points[mask]
+    return np.column_stack((-_points[:, 1], _points[:, 0], _points[:, 2]))
 
 def create_pcd(vec: o3d.utility.Vector3dVector) -> o3d.geometry.PointCloud:
     return o3d.geometry.PointCloud(vec)
@@ -53,11 +54,11 @@ def get_geometries(demo_root: Path, scene: int) -> Tuple[
 
 def get_box(params: float, colour: List[int]) -> o3d.geometry.LineSet:
     def get_rotation(yaw):
-        angle = np.array([0, 0, yaw + (np.pi / 2.0)])
+        angle = np.array([0, 0, yaw])
         r = R.from_euler('XYZ', angle)
         return r.as_matrix()
 
-    center = np.column_stack((params[1], -params[0], params[2]))
+    center = np.column_stack((params[0], params[1], params[2]))
     extent = params[3:6]  # h, w, l
     angle = params[6]
     # angle[0] = -angle[0]
@@ -115,7 +116,7 @@ def produce_img(
     # re-render
     vis.poll_events()
     vis.update_renderer()
-    time.sleep(0.03)
+    vis.capture_screen_image(str(demo_root / 'out' / f'{scene}.png'))
     return gt_boxes, lidar_boxes, radar_boxes
 
 def produce_imgs(demo_root: Path, section: List[int]) -> None:
