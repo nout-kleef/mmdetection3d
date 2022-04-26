@@ -139,7 +139,6 @@ def produce_imgs(demo_root: Path, section: List[int]) -> None:
     vis.add_geometry(lidar_pcd)
     vis.add_geometry(radar_pcd)
     vis.get_render_option().load_from_json(str(demo_root / 'render_options.json'))
-    time.sleep(5)
     for scene in section:
         gt_boxes, lidar_boxes, radar_boxes = produce_img(
             vis, 
@@ -156,23 +155,25 @@ def make_video(demo_root: Path, fps: int) -> None:
     clip = moviepy.video.io.ImageSequenceClip.ImageSequenceClip(images, fps=fps)
     clip.write_videofile(str(demo_root / 'out' / 'demo.mp4'))
 
-def make_demo(demo_root: Path, start: int, duration: int, fps: int) -> None:
-    section = get_scenes(demo_root, start, duration)
+def make_demo(demo_root: Path, starts: List[int], duration: int, fps: int) -> None:
+    section = []
+    for start in starts:
+        section += get_scenes(demo_root, start, duration)
     produce_imgs(demo_root, section)
     make_video(demo_root, fps)
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('demo_root', help='path to root of directory containing point clouds, ground-truth and detections')
-    parser.add_argument('start', help='timestamp of first scene')
+    parser.add_argument('starts', help='timestamps of first scenes')
     parser.add_argument('--duration', help='duration of movie')
     parser.add_argument('--fps', help='FPS of movie')
     args = parser.parse_args()
     args.duration   = 5 if args.duration is None else args.duration
-    args.fps        = 10 if args.fps is None else args.fps
+    args.fps        = 5 if args.fps is None else args.fps
     make_demo(
         demo_root = Path(args.demo_root),
-        start = int(args.start),
+        starts = [int(start) for start in args.starts.split(',')],
         duration = int(args.duration),
         fps = int(args.fps)
     )
